@@ -103,7 +103,7 @@ MENU_ITEMS = [
     
     # ============ GRILLADES ============
     MenuItem(id="10", name="Poulet Entier Grillé", description="Poulet fermier entier grillé aux herbes, juteux et savoureux", price=17.00, category=Category.GRILLADES, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/4s6bzx0f_EED7F738-8D10-4823-937C-9701C2874764.png"),
-    MenuItem(id="11", name="Cuisse de Poulet Grillé", description="Cuisse de poulet marinée et grillée à la perfection", price=7.00, category=Category.GRILLADES),
+    MenuItem(id="11", name="Cuisse de Poulet Grillé", description="Cuisse de poulet marinée et grillée à la perfection", price=7.00, category=Category.GRILLADES, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/emxz2h8s_FDF1DE2F-1AAF-4F15-8ED5-9F08EF2F7409.png"),
     MenuItem(id="12", name="Côtelettes d'Agneau", description="Côtelettes d'agneau grillées, tendres et parfumées", price=12.00, category=Category.GRILLADES, quantity_info="4 pièces", image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/pe8zqu2b_24AA1592-6E3A-491E-9E41-038491599714.png"),
     MenuItem(id="13", name="Brochettes Viande", description="Brochettes de viande tendre marinée aux herbes", price=3.00, category=Category.GRILLADES, quantity_info="3 pièces", image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/rrqdy1ov_8F254ABE-A4E9-4FDE-BEEF-19547347E207.png"),
     MenuItem(id="14", name="Brochettes Mixtes", description="Assortiment de brochettes viande et légumes grillés", price=4.00, category=Category.GRILLADES, quantity_info="3 pièces", image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/l45rfnet_063935E9-A005-43EC-BEDA-73397F9F2F9C.png"),
@@ -127,12 +127,12 @@ MENU_ITEMS = [
     MenuItem(id="40", name="Frites", description="Frites dorées et croustillantes", price=2.00, category=Category.ACCOMPAGNEMENTS),
     MenuItem(id="41", name="Potato's", description="Potatoes assaisonnées aux herbes", price=2.00, category=Category.ACCOMPAGNEMENTS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/u2yinmhu_295F1092-47BB-44D8-BC6A-25928CC5D324.png"),
     MenuItem(id="42", name="Alloco", description="Bananes plantain frites, spécialité africaine sucrée-salée", price=3.50, category=Category.ACCOMPAGNEMENTS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/s1r3ph1y_87FE5DBD-A1BF-4480-9B05-F7B8854EDA56.png"),
-    MenuItem(id="43", name="Banane Frit", description="Bananes douces frites caramélisées", price=3.50, category=Category.ACCOMPAGNEMENTS),
-    MenuItem(id="44", name="Manioc Frit", description="Bâtonnets de manioc frits, croustillants", price=3.50, category=Category.ACCOMPAGNEMENTS),
+    MenuItem(id="43", name="Banane Frit", description="Bananes douces frites caramélisées", price=3.50, category=Category.ACCOMPAGNEMENTS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/emxz2h8s_FDF1DE2F-1AAF-4F15-8ED5-9F08EF2F7409.png"),
+    MenuItem(id="44", name="Manioc Frit", description="Bâtonnets de manioc frits, croustillants", price=3.50, category=Category.ACCOMPAGNEMENTS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/0e159wj8_A819519E-F60F-4C8D-B1FA-E1E2FB580892.png"),
     
     # ============ DESSERTS ============
     MenuItem(id="50", name="Crêpes Nutella", description="Crêpes fines garnies de Nutella fondant", price=3.50, category=Category.DESSERTS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/yix60xzs_1A7A4F3C-69A5-4902-83C4-7083C9F2533E.png"),
-    MenuItem(id="51", name="Gâteau Chocolat", description="Fondant au chocolat noir fait maison", price=7.50, category=Category.DESSERTS),
+    MenuItem(id="51", name="Gâteau Chocolat", description="Fondant au chocolat noir fait maison", price=7.50, category=Category.DESSERTS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/mktjze96_7E6D7DCB-4825-43FA-B9E7-477FCAB02A7E.png"),
     MenuItem(id="52", name="Tiramisu", description="Tiramisu maison crémeux au café et mascarpone", price=3.99, category=Category.DESSERTS),
     MenuItem(id="53", name="Salade de Fruits", description="Salade de fruits frais de saison", price=4.00, category=Category.DESSERTS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/cbjdb1m5_B1F37EB4-C7F0-4E61-BA08-4E3E371BA36E.png"),
     
