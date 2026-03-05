@@ -129,6 +129,9 @@ MENU_ITEMS = [
     MenuItem(id="42", name="Alloco", description="Bananes plantain frites, spécialité africaine sucrée-salée", price=3.50, category=Category.ACCOMPAGNEMENTS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/s1r3ph1y_87FE5DBD-A1BF-4480-9B05-F7B8854EDA56.png"),
     MenuItem(id="43", name="Banane Frit", description="Bananes douces frites caramélisées", price=3.50, category=Category.ACCOMPAGNEMENTS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/ui24dtv5_D1ABE73C-F08F-4C68-9A9D-C626CE181523.png"),
     MenuItem(id="44", name="Manioc Frit", description="Bâtonnets de manioc frits, croustillants", price=3.50, category=Category.ACCOMPAGNEMENTS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/0e159wj8_A819519E-F60F-4C8D-B1FA-E1E2FB580892.png"),
+    MenuItem(id="45", name="Pâtes Crème", description="Pâtes onctueuses à la crème fraîche", price=2.50, category=Category.ACCOMPAGNEMENTS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/u7i4cblj_3E31BB2D-3474-43BE-9317-63BD070A7D4B.png"),
+    MenuItem(id="46", name="Spaghetti Crème", description="Spaghetti à la sauce crème et fines herbes", price=3.00, category=Category.ACCOMPAGNEMENTS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/1xuliia0_81E7D67C-CB0D-4F43-B6F2-75A9C759B0B9.png"),
+    MenuItem(id="47", name="Riz", description="Riz basmati parfumé", price=2.50, category=Category.ACCOMPAGNEMENTS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/s9cjxue9_181D25DF-BBB9-43F3-85DE-3ED181BCCA16.png"),
     
     # ============ DESSERTS ============
     MenuItem(id="50", name="Crêpes Nutella", description="Crêpes fines garnies de Nutella fondant", price=3.50, category=Category.DESSERTS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/yix60xzs_1A7A4F3C-69A5-4902-83C4-7083C9F2533E.png"),
@@ -143,7 +146,7 @@ MENU_ITEMS = [
     MenuItem(id="63", name="Sprite", description="Sprite citron-lime 33cl", price=2.00, category=Category.BOISSONS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/ry6gidpu_IMG_4475.jpeg"),
     MenuItem(id="64", name="Ice Tea Pêche", description="Thé glacé saveur pêche 33cl", price=2.50, category=Category.BOISSONS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/nflc0i3g_IMG_4474.jpeg"),
     MenuItem(id="65", name="Jus d'Orange Frais", description="Jus d'orange fraîchement pressé", price=3.50, category=Category.BOISSONS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/qaip55bp_IMG_4478.jpeg"),
-    MenuItem(id="66", name="Eau Minérale", description="Eau minérale naturelle 50cl", price=1.50, category=Category.BOISSONS),
+    MenuItem(id="66", name="Eau Minérale", description="Eau minérale naturelle 50cl", price=1.50, category=Category.BOISSONS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/n9hv1xal_IMG_4481.png"),
 ]
 
 # Restaurant Info
