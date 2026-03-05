@@ -138,11 +138,11 @@ MENU_ITEMS = [
     
     # ============ BOISSONS ============
     MenuItem(id="60", name="Boisson Foco", description="Boisson exotique aux fruits tropicaux", price=2.00, category=Category.BOISSONS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/oem1hndz_IMG_4376.jpeg"),
-    MenuItem(id="61", name="Coca-Cola", description="Coca-Cola classique 33cl", price=2.00, category=Category.BOISSONS),
-    MenuItem(id="62", name="Fanta Orange", description="Fanta Orange pétillant 33cl", price=2.00, category=Category.BOISSONS),
-    MenuItem(id="63", name="Sprite", description="Sprite citron-lime 33cl", price=2.00, category=Category.BOISSONS),
-    MenuItem(id="64", name="Ice Tea Pêche", description="Thé glacé saveur pêche 33cl", price=2.50, category=Category.BOISSONS),
-    MenuItem(id="65", name="Jus d'Orange Frais", description="Jus d'orange fraîchement pressé", price=3.50, category=Category.BOISSONS),
+    MenuItem(id="61", name="Coca-Cola", description="Coca-Cola classique 33cl", price=2.00, category=Category.BOISSONS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/afjdbdt9_IMG_4466.jpeg"),
+    MenuItem(id="62", name="Fanta Orange", description="Fanta Orange pétillant 33cl", price=2.00, category=Category.BOISSONS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/87719suf_IMG_4476.jpeg"),
+    MenuItem(id="63", name="Sprite", description="Sprite citron-lime 33cl", price=2.00, category=Category.BOISSONS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/ry6gidpu_IMG_4475.jpeg"),
+    MenuItem(id="64", name="Ice Tea Pêche", description="Thé glacé saveur pêche 33cl", price=2.50, category=Category.BOISSONS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/nflc0i3g_IMG_4474.jpeg"),
+    MenuItem(id="65", name="Jus d'Orange Frais", description="Jus d'orange fraîchement pressé", price=3.50, category=Category.BOISSONS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/qaip55bp_IMG_4478.jpeg"),
     MenuItem(id="66", name="Eau Minérale", description="Eau minérale naturelle 50cl", price=1.50, category=Category.BOISSONS),
 ]
 
