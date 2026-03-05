@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,15 +14,16 @@ import {
   Linking,
   KeyboardAvoidingView,
   Modal,
+  ImageBackground,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Constants from 'expo-constants';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 // API Configuration
 const API_BASE_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
@@ -85,9 +86,11 @@ const COLORS = {
   gold: '#D4AF37',
   goldLight: '#F4E4BA',
   goldDark: '#B8860B',
+  goldAccent: '#FFD700',
   black: '#0a0a0a',
   blackLight: '#1a1a1a',
   blackMedium: '#2a2a2a',
+  blackSoft: '#1f1f1f',
   white: '#ffffff',
   gray: '#888888',
   grayLight: '#cccccc',
@@ -95,14 +98,65 @@ const COLORS = {
   error: '#f44336',
 };
 
-// Category Icons mapping
-const CATEGORY_ICONS: { [key: string]: string } = {
-  entrees: 'restaurant-menu',
-  grillades: 'local-fire-department',
-  burgers: 'lunch-dining',
-  desserts: 'cake',
-  boissons: 'local-cafe',
-  plats_surprise: 'card-giftcard',
+// Food Images - Using high quality food images
+const FOOD_IMAGES = {
+  burger: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop',
+  grillade: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=400&h=300&fit=crop',
+  dessert: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=400&h=300&fit=crop',
+  boisson: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=400&h=300&fit=crop',
+  entree: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=400&h=300&fit=crop',
+  plat: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=300&fit=crop',
+  restaurant: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop',
+  interior: 'https://images.unsplash.com/photo-1559329007-40df8a9345d8?w=800&h=600&fit=crop',
+};
+
+// Category Images
+const CATEGORY_IMAGES: { [key: string]: string } = {
+  entrees: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=300&h=200&fit=crop',
+  grillades: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=300&h=200&fit=crop',
+  burgers: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&h=200&fit=crop',
+  desserts: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=300&h=200&fit=crop',
+  boissons: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=300&h=200&fit=crop',
+  plats_surprise: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=200&fit=crop',
+};
+
+// Menu Item Images based on category
+const getMenuItemImage = (category: string, name: string): string => {
+  const images: { [key: string]: string[] } = {
+    entrees: [
+      'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1562967914-608f82629710?w=300&h=200&fit=crop',
+    ],
+    grillades: [
+      'https://images.unsplash.com/photo-1544025162-d76694265947?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=300&h=200&fit=crop',
+    ],
+    burgers: [
+      'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1550547660-d9450f859349?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=300&h=200&fit=crop',
+    ],
+    desserts: [
+      'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=300&h=200&fit=crop',
+    ],
+    boissons: [
+      'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1497534446932-c925b458314e?w=300&h=200&fit=crop',
+    ],
+    plats_surprise: [
+      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=300&h=200&fit=crop',
+    ],
+  };
+  
+  const categoryImages = images[category] || images.entrees;
+  const index = name.length % categoryImages.length;
+  return categoryImages[index];
 };
 
 export default function KizaRestaurant() {
@@ -227,7 +281,6 @@ export default function KizaRestaurant() {
   };
 
   const placeOrder = async () => {
-    // Validate address
     if (!deliveryAddress.full_name || !deliveryAddress.phone || !deliveryAddress.address || 
         !deliveryAddress.city || !deliveryAddress.postal_code) {
       Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires.');
@@ -289,12 +342,12 @@ export default function KizaRestaurant() {
     return (
       <View style={styles.loadingContainer}>
         <LinearGradient colors={[COLORS.black, COLORS.blackLight]} style={styles.gradient}>
-          <Image
-            source={{ uri: 'https://customer-assets.emergentagent.com/job_ec724e36-6933-4af6-bd99-4588dc9d4227/artifacts/prsul7jv_1E618950-96B7-4D61-88C0-8D368C76A2E3.png' }}
-            style={styles.loadingLogo}
-            resizeMode="contain"
-          />
-          <ActivityIndicator size="large" color={COLORS.gold} />
+          <View style={styles.loadingLogoContainer}>
+            <FontAwesome5 name="crown" size={60} color={COLORS.gold} />
+            <Text style={styles.loadingLogoText}>KIZA</Text>
+            <Text style={styles.loadingLogoSubtext}>RESTAURANT</Text>
+          </View>
+          <ActivityIndicator size="large" color={COLORS.gold} style={{ marginTop: 30 }} />
           <Text style={styles.loadingText}>Chargement...</Text>
         </LinearGradient>
       </View>
@@ -305,15 +358,15 @@ export default function KizaRestaurant() {
   const renderHeader = () => (
     <View style={styles.header}>
       <TouchableOpacity onPress={() => setCurrentScreen('home')} style={styles.headerLogo}>
+        <FontAwesome5 name="crown" size={18} color={COLORS.gold} />
         <Text style={styles.logoText}>KIZA</Text>
-        <MaterialIcons name="restaurant" size={20} color={COLORS.gold} />
       </TouchableOpacity>
       <View style={styles.headerRight}>
         <TouchableOpacity 
           style={styles.cartButton} 
           onPress={() => setCurrentScreen('cart')}
         >
-          <Ionicons name="cart" size={24} color={COLORS.gold} />
+          <Ionicons name="cart" size={26} color={COLORS.gold} />
           {getCartItemCount() > 0 && (
             <View style={styles.cartBadge}>
               <Text style={styles.cartBadgeText}>{getCartItemCount()}</Text>
@@ -331,7 +384,7 @@ export default function KizaRestaurant() {
         style={[styles.navItem, currentScreen === 'home' && styles.navItemActive]}
         onPress={() => setCurrentScreen('home')}
       >
-        <Ionicons name="home" size={24} color={currentScreen === 'home' ? COLORS.gold : COLORS.gray} />
+        <Ionicons name="home" size={22} color={currentScreen === 'home' ? COLORS.gold : COLORS.gray} />
         <Text style={[styles.navText, currentScreen === 'home' && styles.navTextActive]}>Accueil</Text>
       </TouchableOpacity>
       
@@ -339,71 +392,125 @@ export default function KizaRestaurant() {
         style={[styles.navItem, currentScreen === 'menu' && styles.navItemActive]}
         onPress={() => setCurrentScreen('menu')}
       >
-        <MaterialIcons name="restaurant-menu" size={24} color={currentScreen === 'menu' ? COLORS.gold : COLORS.gray} />
+        <MaterialIcons name="restaurant-menu" size={22} color={currentScreen === 'menu' ? COLORS.gold : COLORS.gray} />
         <Text style={[styles.navText, currentScreen === 'menu' && styles.navTextActive]}>Menu</Text>
       </TouchableOpacity>
       
       <TouchableOpacity 
-        style={[styles.navItem, currentScreen === 'cart' && styles.navItemActive]}
+        style={styles.navItemCenter}
         onPress={() => setCurrentScreen('cart')}
       >
-        <View>
-          <Ionicons name="cart" size={24} color={currentScreen === 'cart' ? COLORS.gold : COLORS.gray} />
+        <LinearGradient colors={[COLORS.gold, COLORS.goldDark]} style={styles.navItemCenterGradient}>
+          <Ionicons name="cart" size={28} color={COLORS.black} />
           {getCartItemCount() > 0 && (
-            <View style={styles.navCartBadge}>
-              <Text style={styles.navCartBadgeText}>{getCartItemCount()}</Text>
+            <View style={styles.navCenterBadge}>
+              <Text style={styles.navCenterBadgeText}>{getCartItemCount()}</Text>
             </View>
           )}
-        </View>
-        <Text style={[styles.navText, currentScreen === 'cart' && styles.navTextActive]}>Panier</Text>
+        </LinearGradient>
       </TouchableOpacity>
       
       <TouchableOpacity 
         style={[styles.navItem, currentScreen === 'contact' && styles.navItemActive]}
         onPress={() => setCurrentScreen('contact')}
       >
-        <Ionicons name="call" size={24} color={currentScreen === 'contact' ? COLORS.gold : COLORS.gray} />
+        <Ionicons name="call" size={22} color={currentScreen === 'contact' ? COLORS.gold : COLORS.gray} />
         <Text style={[styles.navText, currentScreen === 'contact' && styles.navTextActive]}>Contact</Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity 
+        style={styles.navItem}
+        onPress={() => openSocialMedia('phone')}
+      >
+        <MaterialIcons name="delivery-dining" size={22} color={COLORS.gray} />
+        <Text style={styles.navText}>Livraison</Text>
       </TouchableOpacity>
     </View>
   );
 
-  // Home Screen
+  // Home Screen - Enhanced with images
   const renderHome = () => (
     <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-      {/* Hero Section */}
+      {/* Hero Section with Image Background */}
       <View style={styles.heroSection}>
-        <LinearGradient
-          colors={['rgba(212, 175, 55, 0.3)', 'rgba(10, 10, 10, 0.9)']}
-          style={styles.heroGradient}
+        <ImageBackground
+          source={{ uri: FOOD_IMAGES.restaurant }}
+          style={styles.heroBackground}
+          imageStyle={styles.heroBackgroundImage}
         >
-          <View style={styles.crownContainer}>
-            <FontAwesome5 name="crown" size={40} color={COLORS.gold} />
-          </View>
-          <Text style={styles.heroTitle}>KIZA</Text>
-          <Text style={styles.heroSubtitle}>RESTAURANT</Text>
-          <Text style={styles.heroTagline}>Royale</Text>
-          <View style={styles.heroCategories}>
-            <Text style={styles.heroCategoryText}>Grillades • Burgers • Desserts • Boissons</Text>
+          <LinearGradient
+            colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.8)', COLORS.black]}
+            style={styles.heroOverlay}
+          >
+            <View style={styles.heroContent}>
+              <View style={styles.crownContainer}>
+                <FontAwesome5 name="crown" size={50} color={COLORS.gold} />
+              </View>
+              <Text style={styles.heroTitle}>KIZA</Text>
+              <View style={styles.heroTitleUnderline} />
+              <Text style={styles.heroSubtitle}>RESTAURANT</Text>
+              <Text style={styles.heroTagline}>Royale</Text>
+              
+              <View style={styles.heroCategoriesContainer}>
+                <View style={styles.heroCategories}>
+                  <Text style={styles.heroCategoryText}>GRILLADES</Text>
+                  <View style={styles.heroDot} />
+                  <Text style={styles.heroCategoryText}>BURGERS</Text>
+                  <View style={styles.heroDot} />
+                  <Text style={styles.heroCategoryText}>DESSERTS</Text>
+                  <View style={styles.heroDot} />
+                  <Text style={styles.heroCategoryText}>BOISSONS</Text>
+                </View>
+              </View>
+            </View>
+          </LinearGradient>
+        </ImageBackground>
+      </View>
+
+      {/* Quick Action Buttons */}
+      <View style={styles.quickActions}>
+        <TouchableOpacity 
+          style={styles.quickActionButton}
+          onPress={() => setCurrentScreen('menu')}
+        >
+          <LinearGradient colors={[COLORS.gold, COLORS.goldDark]} style={styles.quickActionGradient}>
+            <MaterialIcons name="restaurant-menu" size={20} color={COLORS.black} />
+            <Text style={styles.quickActionText}>Voir Menu</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.quickActionButtonOutline}
+          onPress={() => openSocialMedia('phone')}
+        >
+          <Ionicons name="call" size={20} color={COLORS.gold} />
+          <Text style={styles.quickActionTextOutline}>Commander</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Delivery Banner */}
+      <View style={styles.deliveryBanner}>
+        <LinearGradient 
+          colors={['rgba(212, 175, 55, 0.2)', 'rgba(212, 175, 55, 0.1)']} 
+          style={styles.deliveryBannerGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <MaterialIcons name="delivery-dining" size={28} color={COLORS.gold} />
+          <View style={styles.deliveryBannerContent}>
+            <Text style={styles.deliveryBannerTitle}>Livraison dans un rayon de 30km</Text>
+            <Text style={styles.deliveryBannerSubtitle}>Livraison GRATUITE dès 25€ d'achat!</Text>
           </View>
         </LinearGradient>
       </View>
 
-      {/* Delivery Info Banner */}
-      <View style={styles.deliveryBanner}>
-        <MaterialIcons name="delivery-dining" size={24} color={COLORS.gold} />
-        <Text style={styles.deliveryBannerText}>Livraison dans un rayon de 30km</Text>
-      </View>
-
-      {/* Free Delivery Banner */}
-      <View style={styles.freeDeliveryBanner}>
-        <Ionicons name="gift" size={20} color={COLORS.black} />
-        <Text style={styles.freeDeliveryText}>Livraison GRATUITE dès 25€ d'achat!</Text>
-      </View>
-
-      {/* Categories */}
+      {/* Categories Section with Images */}
       <View style={styles.categoriesSection}>
-        <Text style={styles.sectionTitle}>Nos Catégories</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Nos Catégories</Text>
+          <TouchableOpacity onPress={() => setCurrentScreen('menu')}>
+            <Text style={styles.sectionLink}>Voir tout</Text>
+          </TouchableOpacity>
+        </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
           {restaurantInfo?.categories.map((cat) => (
             <TouchableOpacity
@@ -414,25 +521,71 @@ export default function KizaRestaurant() {
                 setCurrentScreen('menu');
               }}
             >
-              <LinearGradient
-                colors={[COLORS.goldDark, COLORS.gold]}
-                style={styles.categoryGradient}
+              <ImageBackground
+                source={{ uri: CATEGORY_IMAGES[cat.id] }}
+                style={styles.categoryImage}
+                imageStyle={styles.categoryImageStyle}
               >
-                <MaterialIcons 
-                  name={CATEGORY_ICONS[cat.id] as any || 'restaurant'} 
-                  size={32} 
-                  color={COLORS.black} 
-                />
-              </LinearGradient>
-              <Text style={styles.categoryName}>{cat.name}</Text>
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.8)']}
+                  style={styles.categoryOverlay}
+                >
+                  <Text style={styles.categoryName}>{cat.name}</Text>
+                </LinearGradient>
+              </ImageBackground>
+              <View style={styles.categoryGoldBar} />
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
-      {/* Popular Items */}
+      {/* Featured Section */}
+      <View style={styles.featuredSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Découvrez Nos Spécialités</Text>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.featuredScroll}>
+          {menuItems.slice(7, 12).map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.featuredCard}
+              onPress={() => {
+                setSelectedItem(item);
+                setItemQuantity(1);
+                setShowItemModal(true);
+              }}
+            >
+              <Image
+                source={{ uri: getMenuItemImage(item.category, item.name) }}
+                style={styles.featuredImage}
+              />
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.9)']}
+                style={styles.featuredOverlay}
+              >
+                <Text style={styles.featuredName} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.featuredPrice}>{item.price.toFixed(2)}€</Text>
+              </LinearGradient>
+              <TouchableOpacity
+                style={styles.featuredAddButton}
+                onPress={() => addToCart(item, 1)}
+              >
+                <Ionicons name="add" size={20} color={COLORS.black} />
+              </TouchableOpacity>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Popular Items Section */}
       <View style={styles.popularSection}>
-        <Text style={styles.sectionTitle}>Nos Best-Sellers</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Nos Best-Sellers</Text>
+          <View style={styles.sectionBadge}>
+            <FontAwesome5 name="fire" size={12} color={COLORS.gold} />
+            <Text style={styles.sectionBadgeText}>Populaire</Text>
+          </View>
+        </View>
         {menuItems.slice(0, 4).map((item) => (
           <TouchableOpacity
             key={item.id}
@@ -442,22 +595,58 @@ export default function KizaRestaurant() {
               setShowItemModal(true);
             }}
           >
+            <Image
+              source={{ uri: getMenuItemImage(item.category, item.name) }}
+              style={styles.popularImage}
+            />
             <View style={styles.popularInfo}>
               <Text style={styles.popularName}>{item.name}</Text>
               {item.quantity_info && (
-                <Text style={styles.popularQuantity}>{item.quantity_info}</Text>
+                <View style={styles.popularQuantityBadge}>
+                  <Text style={styles.popularQuantity}>{item.quantity_info}</Text>
+                </View>
               )}
               <Text style={styles.popularDesc} numberOfLines={2}>{item.description}</Text>
               <Text style={styles.popularPrice}>{item.price.toFixed(2)}€</Text>
             </View>
             <TouchableOpacity
-              style={styles.addButton}
+              style={styles.popularAddButton}
               onPress={() => addToCart(item, 1)}
             >
-              <Ionicons name="add" size={24} color={COLORS.black} />
+              <LinearGradient colors={[COLORS.gold, COLORS.goldDark]} style={styles.popularAddGradient}>
+                <Ionicons name="add" size={24} color={COLORS.black} />
+              </LinearGradient>
             </TouchableOpacity>
           </TouchableOpacity>
         ))}
+      </View>
+
+      {/* Restaurant Ambiance Section */}
+      <View style={styles.ambianceSection}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Bienvenue chez KIZA</Text>
+        </View>
+        <View style={styles.ambianceCard}>
+          <Image
+            source={{ uri: FOOD_IMAGES.interior }}
+            style={styles.ambianceImage}
+          />
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.95)']}
+            style={styles.ambianceOverlay}
+          >
+            <Text style={styles.ambianceText}>
+              Découvrez une expérience culinaire royale avec nos grillades premium, burgers gourmets et desserts délicieux.
+            </Text>
+            <TouchableOpacity
+              style={styles.ambianceButton}
+              onPress={() => setCurrentScreen('menu')}
+            >
+              <Text style={styles.ambianceButtonText}>Explorer le Menu</Text>
+              <MaterialIcons name="arrow-forward" size={18} color={COLORS.black} />
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
       </View>
 
       {/* Order CTA */}
@@ -468,8 +657,13 @@ export default function KizaRestaurant() {
         <LinearGradient
           colors={[COLORS.gold, COLORS.goldDark]}
           style={styles.orderCTAGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
         >
-          <Text style={styles.orderCTAText}>Commander Maintenant</Text>
+          <View style={styles.orderCTAContent}>
+            <FontAwesome5 name="crown" size={20} color={COLORS.black} />
+            <Text style={styles.orderCTAText}>Commander Maintenant</Text>
+          </View>
           <MaterialIcons name="arrow-forward" size={24} color={COLORS.black} />
         </LinearGradient>
       </TouchableOpacity>
@@ -478,7 +672,7 @@ export default function KizaRestaurant() {
     </ScrollView>
   );
 
-  // Menu Screen
+  // Menu Screen with Images
   const renderMenu = () => (
     <View style={styles.menuContainer}>
       {/* Category Tabs */}
@@ -497,11 +691,6 @@ export default function KizaRestaurant() {
             ]}
             onPress={() => setSelectedCategory(cat.id)}
           >
-            <MaterialIcons 
-              name={CATEGORY_ICONS[cat.id] as any || 'restaurant'} 
-              size={18} 
-              color={selectedCategory === cat.id ? COLORS.black : COLORS.gold} 
-            />
             <Text style={[
               styles.categoryTabText,
               selectedCategory === cat.id && styles.categoryTabTextActive
@@ -512,34 +701,42 @@ export default function KizaRestaurant() {
 
       {/* Menu Items */}
       <ScrollView style={styles.menuScroll} showsVerticalScrollIndicator={false}>
-        {filteredMenuItems.map((item) => (
-          <TouchableOpacity
-            key={item.id}
-            style={styles.menuCard}
-            onPress={() => {
-              setSelectedItem(item);
-              setItemQuantity(1);
-              setShowItemModal(true);
-            }}
-          >
-            <View style={styles.menuCardContent}>
-              <View style={styles.menuCardInfo}>
-                <Text style={styles.menuCardName}>{item.name}</Text>
-                {item.quantity_info && (
-                  <Text style={styles.menuCardQuantity}>{item.quantity_info}</Text>
-                )}
-                <Text style={styles.menuCardDesc} numberOfLines={2}>{item.description}</Text>
-                <Text style={styles.menuCardPrice}>{item.price.toFixed(2)}€</Text>
-              </View>
+        <View style={styles.menuGrid}>
+          {filteredMenuItems.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.menuCard}
+              onPress={() => {
+                setSelectedItem(item);
+                setItemQuantity(1);
+                setShowItemModal(true);
+              }}
+            >
+              <Image
+                source={{ uri: getMenuItemImage(item.category, item.name) }}
+                style={styles.menuCardImage}
+              />
+              <LinearGradient
+                colors={['transparent', 'rgba(0,0,0,0.9)']}
+                style={styles.menuCardOverlay}
+              >
+                <View style={styles.menuCardContent}>
+                  <Text style={styles.menuCardName} numberOfLines={1}>{item.name}</Text>
+                  {item.quantity_info && (
+                    <Text style={styles.menuCardQuantity}>{item.quantity_info}</Text>
+                  )}
+                  <Text style={styles.menuCardPrice}>{item.price.toFixed(2)}€</Text>
+                </View>
+              </LinearGradient>
               <TouchableOpacity
-                style={styles.menuAddButton}
+                style={styles.menuCardAddButton}
                 onPress={() => addToCart(item, 1)}
               >
-                <Ionicons name="add" size={28} color={COLORS.black} />
+                <Ionicons name="add" size={22} color={COLORS.black} />
               </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          ))}
+        </View>
         <View style={styles.bottomSpacing} />
       </ScrollView>
     </View>
@@ -552,41 +749,53 @@ export default function KizaRestaurant() {
       
       {cart.length === 0 ? (
         <View style={styles.emptyCart}>
-          <Ionicons name="cart-outline" size={80} color={COLORS.gray} />
+          <View style={styles.emptyCartIconContainer}>
+            <Ionicons name="cart-outline" size={80} color={COLORS.gold} />
+          </View>
           <Text style={styles.emptyCartText}>Votre panier est vide</Text>
+          <Text style={styles.emptyCartSubtext}>Ajoutez des délicieux plats pour commencer</Text>
           <TouchableOpacity
             style={styles.emptyCartButton}
             onPress={() => setCurrentScreen('menu')}
           >
-            <Text style={styles.emptyCartButtonText}>Découvrir le menu</Text>
+            <LinearGradient colors={[COLORS.gold, COLORS.goldDark]} style={styles.emptyCartGradient}>
+              <Text style={styles.emptyCartButtonText}>Découvrir le menu</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       ) : (
         <>
-          {cart.map((item) => (
-            <View key={item.menu_item_id} style={styles.cartItem}>
-              <View style={styles.cartItemInfo}>
-                <Text style={styles.cartItemName}>{item.name}</Text>
-                <Text style={styles.cartItemPrice}>{item.price.toFixed(2)}€ / unité</Text>
+          {cart.map((item) => {
+            const menuItem = menuItems.find(m => m.id === item.menu_item_id);
+            return (
+              <View key={item.menu_item_id} style={styles.cartItem}>
+                <Image
+                  source={{ uri: menuItem ? getMenuItemImage(menuItem.category, menuItem.name) : FOOD_IMAGES.plat }}
+                  style={styles.cartItemImage}
+                />
+                <View style={styles.cartItemInfo}>
+                  <Text style={styles.cartItemName}>{item.name}</Text>
+                  <Text style={styles.cartItemPrice}>{item.price.toFixed(2)}€ / unité</Text>
+                </View>
+                <View style={styles.cartItemActions}>
+                  <TouchableOpacity
+                    style={styles.quantityButton}
+                    onPress={() => updateCartQuantity(item.menu_item_id, item.quantity - 1)}
+                  >
+                    <Ionicons name="remove" size={18} color={COLORS.gold} />
+                  </TouchableOpacity>
+                  <Text style={styles.quantityText}>{item.quantity}</Text>
+                  <TouchableOpacity
+                    style={styles.quantityButton}
+                    onPress={() => updateCartQuantity(item.menu_item_id, item.quantity + 1)}
+                  >
+                    <Ionicons name="add" size={18} color={COLORS.gold} />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.cartItemTotal}>{(item.price * item.quantity).toFixed(2)}€</Text>
               </View>
-              <View style={styles.cartItemActions}>
-                <TouchableOpacity
-                  style={styles.quantityButton}
-                  onPress={() => updateCartQuantity(item.menu_item_id, item.quantity - 1)}
-                >
-                  <Ionicons name="remove" size={20} color={COLORS.gold} />
-                </TouchableOpacity>
-                <Text style={styles.quantityText}>{item.quantity}</Text>
-                <TouchableOpacity
-                  style={styles.quantityButton}
-                  onPress={() => updateCartQuantity(item.menu_item_id, item.quantity + 1)}
-                >
-                  <Ionicons name="add" size={20} color={COLORS.gold} />
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.cartItemTotal}>{(item.price * item.quantity).toFixed(2)}€</Text>
-            </View>
-          ))}
+            );
+          })}
 
           {/* Order Summary */}
           <View style={styles.orderSummary}>
@@ -604,9 +813,12 @@ export default function KizaRestaurant() {
               </Text>
             </View>
             {getCartTotal() < (restaurantInfo?.free_delivery_minimum || 25) && (
-              <Text style={styles.freeDeliveryHint}>
-                Plus que {((restaurantInfo?.free_delivery_minimum || 25) - getCartTotal()).toFixed(2)}€ pour la livraison gratuite!
-              </Text>
+              <View style={styles.freeDeliveryHintContainer}>
+                <Ionicons name="gift" size={16} color={COLORS.gold} />
+                <Text style={styles.freeDeliveryHint}>
+                  Plus que {((restaurantInfo?.free_delivery_minimum || 25) - getCartTotal()).toFixed(2)}€ pour la livraison gratuite!
+                </Text>
+              </View>
             )}
             <View style={[styles.summaryRow, styles.summaryTotal]}>
               <Text style={styles.summaryTotalLabel}>Total</Text>
@@ -618,7 +830,7 @@ export default function KizaRestaurant() {
 
           {/* Payment Info */}
           <View style={styles.paymentInfo}>
-            <MaterialIcons name="payment" size={24} color={COLORS.gold} />
+            <MaterialIcons name="local-atm" size={24} color={COLORS.gold} />
             <Text style={styles.paymentText}>Paiement à la livraison</Text>
           </View>
 
@@ -760,7 +972,7 @@ export default function KizaRestaurant() {
 
         {/* Payment Method */}
         <View style={styles.paymentMethod}>
-          <MaterialIcons name="local-atm" size={24} color={COLORS.gold} />
+          <MaterialIcons name="local-atm" size={28} color={COLORS.gold} />
           <View style={styles.paymentMethodInfo}>
             <Text style={styles.paymentMethodTitle}>Paiement à la livraison</Text>
             <Text style={styles.paymentMethodDesc}>Payez en espèces ou par carte au livreur</Text>
@@ -797,9 +1009,10 @@ export default function KizaRestaurant() {
   const renderContact = () => (
     <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
       <View style={styles.contactHeader}>
-        <FontAwesome5 name="crown" size={40} color={COLORS.gold} />
+        <FontAwesome5 name="crown" size={50} color={COLORS.gold} />
         <Text style={styles.contactTitle}>KIZA</Text>
         <Text style={styles.contactSubtitle}>Restaurant</Text>
+        <View style={styles.contactHeaderLine} />
       </View>
 
       <View style={styles.contactSection}>
@@ -809,34 +1022,34 @@ export default function KizaRestaurant() {
           style={styles.contactCard}
           onPress={() => openSocialMedia('phone')}
         >
-          <View style={styles.contactIconContainer}>
-            <Ionicons name="call" size={24} color={COLORS.gold} />
-          </View>
+          <LinearGradient colors={[COLORS.gold, COLORS.goldDark]} style={styles.contactIconContainer}>
+            <Ionicons name="call" size={24} color={COLORS.black} />
+          </LinearGradient>
           <View style={styles.contactCardInfo}>
             <Text style={styles.contactCardTitle}>Téléphone</Text>
             <Text style={styles.contactCardValue}>{restaurantInfo?.phone}</Text>
           </View>
-          <MaterialIcons name="arrow-forward-ios" size={16} color={COLORS.gray} />
+          <MaterialIcons name="arrow-forward-ios" size={16} color={COLORS.gold} />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.contactCard}
           onPress={() => openSocialMedia('email')}
         >
-          <View style={styles.contactIconContainer}>
-            <MaterialIcons name="email" size={24} color={COLORS.gold} />
-          </View>
+          <LinearGradient colors={[COLORS.gold, COLORS.goldDark]} style={styles.contactIconContainer}>
+            <MaterialIcons name="email" size={24} color={COLORS.black} />
+          </LinearGradient>
           <View style={styles.contactCardInfo}>
             <Text style={styles.contactCardTitle}>Email</Text>
             <Text style={styles.contactCardValue}>{restaurantInfo?.email}</Text>
           </View>
-          <MaterialIcons name="arrow-forward-ios" size={16} color={COLORS.gray} />
+          <MaterialIcons name="arrow-forward-ios" size={16} color={COLORS.gold} />
         </TouchableOpacity>
 
         <View style={styles.contactCard}>
-          <View style={styles.contactIconContainer}>
-            <Ionicons name="location" size={24} color={COLORS.gold} />
-          </View>
+          <LinearGradient colors={[COLORS.gold, COLORS.goldDark]} style={styles.contactIconContainer}>
+            <Ionicons name="location" size={24} color={COLORS.black} />
+          </LinearGradient>
           <View style={styles.contactCardInfo}>
             <Text style={styles.contactCardTitle}>Adresse</Text>
             <Text style={styles.contactCardValue}>{restaurantInfo?.address}</Text>
@@ -858,7 +1071,7 @@ export default function KizaRestaurant() {
             <Text style={styles.socialCardTitle}>Snapchat</Text>
             <Text style={styles.socialCardValue}>@{restaurantInfo?.social_media.snapchat}</Text>
           </View>
-          <MaterialIcons name="arrow-forward-ios" size={16} color={COLORS.gray} />
+          <MaterialIcons name="arrow-forward-ios" size={16} color={COLORS.gold} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -875,31 +1088,40 @@ export default function KizaRestaurant() {
             <Text style={styles.socialCardTitle}>Instagram</Text>
             <Text style={styles.socialCardValue}>@{restaurantInfo?.social_media.instagram}</Text>
           </View>
-          <MaterialIcons name="arrow-forward-ios" size={16} color={COLORS.gray} />
+          <MaterialIcons name="arrow-forward-ios" size={16} color={COLORS.gold} />
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.socialCard}
           onPress={() => openSocialMedia('tiktok')}
         >
-          <View style={[styles.socialIconContainer, { backgroundColor: COLORS.black, borderWidth: 1, borderColor: COLORS.white }]}>
+          <View style={[styles.socialIconContainer, { backgroundColor: COLORS.black, borderWidth: 2, borderColor: COLORS.white }]}>
             <FontAwesome5 name="tiktok" size={22} color={COLORS.white} />
           </View>
           <View style={styles.socialCardInfo}>
             <Text style={styles.socialCardTitle}>TikTok</Text>
             <Text style={styles.socialCardValue}>@{restaurantInfo?.social_media.tiktok}</Text>
           </View>
-          <MaterialIcons name="arrow-forward-ios" size={16} color={COLORS.gray} />
+          <MaterialIcons name="arrow-forward-ios" size={16} color={COLORS.gold} />
         </TouchableOpacity>
       </View>
 
       {/* Delivery Info */}
       <View style={styles.deliveryInfoSection}>
-        <MaterialIcons name="delivery-dining" size={40} color={COLORS.gold} />
-        <Text style={styles.deliveryInfoTitle}>Zone de Livraison</Text>
-        <Text style={styles.deliveryInfoText}>Nous livrons dans un rayon de 30km</Text>
-        <Text style={styles.deliveryInfoFee}>Frais de livraison: 3€</Text>
-        <Text style={styles.deliveryInfoFree}>Gratuit dès 25€ d'achat!</Text>
+        <LinearGradient 
+          colors={[COLORS.blackMedium, COLORS.blackLight]}
+          style={styles.deliveryInfoGradient}
+        >
+          <MaterialIcons name="delivery-dining" size={50} color={COLORS.gold} />
+          <Text style={styles.deliveryInfoTitle}>Zone de Livraison</Text>
+          <Text style={styles.deliveryInfoText}>Nous livrons dans un rayon de 30km</Text>
+          <View style={styles.deliveryInfoDivider} />
+          <Text style={styles.deliveryInfoFee}>Frais de livraison: 3€</Text>
+          <View style={styles.deliveryInfoFreeContainer}>
+            <Ionicons name="gift" size={18} color={COLORS.black} />
+            <Text style={styles.deliveryInfoFree}>Gratuit dès 25€ d'achat!</Text>
+          </View>
+        </LinearGradient>
       </View>
 
       <View style={styles.bottomSpacing} />
@@ -913,17 +1135,26 @@ export default function KizaRestaurant() {
         colors={[COLORS.black, COLORS.blackLight]}
         style={styles.successGradient}
       >
-        <View style={styles.successIcon}>
-          <Ionicons name="checkmark-circle" size={100} color={COLORS.gold} />
+        <View style={styles.successIconContainer}>
+          <LinearGradient colors={[COLORS.gold, COLORS.goldDark]} style={styles.successIconGradient}>
+            <Ionicons name="checkmark" size={60} color={COLORS.black} />
+          </LinearGradient>
         </View>
         <Text style={styles.successTitle}>Commande Confirmée!</Text>
-        <Text style={styles.successOrderNumber}>N° {orderNumber}</Text>
+        <View style={styles.successOrderNumberContainer}>
+          <Text style={styles.successOrderNumberLabel}>N° de commande</Text>
+          <Text style={styles.successOrderNumber}>{orderNumber}</Text>
+        </View>
         <Text style={styles.successMessage}>
           Merci pour votre commande! Notre équipe prépare votre repas avec soin.
         </Text>
-        <Text style={styles.successPayment}>
-          Paiement à la livraison - Espèces ou Carte
-        </Text>
+        
+        <View style={styles.successPaymentContainer}>
+          <MaterialIcons name="local-atm" size={24} color={COLORS.gold} />
+          <Text style={styles.successPayment}>
+            Paiement à la livraison - Espèces ou Carte
+          </Text>
+        </View>
         
         <View style={styles.successContact}>
           <Text style={styles.successContactText}>Questions? Appelez-nous:</Text>
@@ -931,8 +1162,10 @@ export default function KizaRestaurant() {
             style={styles.successPhoneButton}
             onPress={() => openSocialMedia('phone')}
           >
-            <Ionicons name="call" size={20} color={COLORS.black} />
-            <Text style={styles.successPhoneText}>{restaurantInfo?.phone}</Text>
+            <LinearGradient colors={[COLORS.gold, COLORS.goldDark]} style={styles.successPhoneGradient}>
+              <Ionicons name="call" size={20} color={COLORS.black} />
+              <Text style={styles.successPhoneText}>{restaurantInfo?.phone}</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
 
@@ -980,47 +1213,56 @@ export default function KizaRestaurant() {
           
           {selectedItem && (
             <>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{selectedItem.name}</Text>
-                {selectedItem.quantity_info && (
-                  <Text style={styles.modalQuantityInfo}>{selectedItem.quantity_info}</Text>
-                )}
-              </View>
-              <Text style={styles.modalDescription}>{selectedItem.description}</Text>
-              <Text style={styles.modalPrice}>{selectedItem.price.toFixed(2)}€</Text>
-              
-              <View style={styles.modalQuantity}>
-                <Text style={styles.modalQuantityLabel}>Quantité</Text>
-                <View style={styles.modalQuantityControls}>
-                  <TouchableOpacity
-                    style={styles.modalQuantityButton}
-                    onPress={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
-                  >
-                    <Ionicons name="remove" size={24} color={COLORS.gold} />
-                  </TouchableOpacity>
-                  <Text style={styles.modalQuantityValue}>{itemQuantity}</Text>
-                  <TouchableOpacity
-                    style={styles.modalQuantityButton}
-                    onPress={() => setItemQuantity(itemQuantity + 1)}
-                  >
-                    <Ionicons name="add" size={24} color={COLORS.gold} />
-                  </TouchableOpacity>
+              <Image
+                source={{ uri: getMenuItemImage(selectedItem.category, selectedItem.name) }}
+                style={styles.modalImage}
+              />
+              <View style={styles.modalBody}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>{selectedItem.name}</Text>
+                  {selectedItem.quantity_info && (
+                    <View style={styles.modalQuantityBadge}>
+                      <Text style={styles.modalQuantityInfo}>{selectedItem.quantity_info}</Text>
+                    </View>
+                  )}
                 </View>
-              </View>
-              
-              <TouchableOpacity
-                style={styles.modalAddButton}
-                onPress={() => addToCart(selectedItem, itemQuantity)}
-              >
-                <LinearGradient
-                  colors={[COLORS.gold, COLORS.goldDark]}
-                  style={styles.modalAddGradient}
+                <Text style={styles.modalDescription}>{selectedItem.description}</Text>
+                <Text style={styles.modalPrice}>{selectedItem.price.toFixed(2)}€</Text>
+                
+                <View style={styles.modalQuantity}>
+                  <Text style={styles.modalQuantityLabel}>Quantité</Text>
+                  <View style={styles.modalQuantityControls}>
+                    <TouchableOpacity
+                      style={styles.modalQuantityButton}
+                      onPress={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
+                    >
+                      <Ionicons name="remove" size={24} color={COLORS.gold} />
+                    </TouchableOpacity>
+                    <Text style={styles.modalQuantityValue}>{itemQuantity}</Text>
+                    <TouchableOpacity
+                      style={styles.modalQuantityButton}
+                      onPress={() => setItemQuantity(itemQuantity + 1)}
+                    >
+                      <Ionicons name="add" size={24} color={COLORS.gold} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                
+                <TouchableOpacity
+                  style={styles.modalAddButton}
+                  onPress={() => addToCart(selectedItem, itemQuantity)}
                 >
-                  <Text style={styles.modalAddText}>
-                    Ajouter au panier - {(selectedItem.price * itemQuantity).toFixed(2)}€
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
+                  <LinearGradient
+                    colors={[COLORS.gold, COLORS.goldDark]}
+                    style={styles.modalAddGradient}
+                  >
+                    <Ionicons name="cart" size={22} color={COLORS.black} />
+                    <Text style={styles.modalAddText}>
+                      Ajouter - {(selectedItem.price * itemQuantity).toFixed(2)}€
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
             </>
           )}
         </View>
@@ -1061,17 +1303,29 @@ const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
     backgroundColor: COLORS.black,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  loadingLogo: {
-    width: 200,
-    height: 200,
-    marginBottom: 20,
+  loadingLogoContainer: {
+    alignItems: 'center',
+  },
+  loadingLogoText: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: COLORS.gold,
+    letterSpacing: 8,
+    marginTop: 10,
+  },
+  loadingLogoSubtext: {
+    fontSize: 14,
+    color: COLORS.white,
+    letterSpacing: 6,
+    marginTop: -5,
   },
   loadingText: {
     color: COLORS.gold,
-    fontSize: 18,
-    marginTop: 16,
-    fontWeight: '500',
+    fontSize: 16,
+    marginTop: 20,
   },
   scrollView: {
     flex: 1,
@@ -1085,18 +1339,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.blackMedium,
+    borderBottomColor: 'rgba(212, 175, 55, 0.2)',
   },
   headerLogo: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   logoText: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: COLORS.gold,
-    letterSpacing: 2,
-    marginRight: 8,
+    letterSpacing: 3,
+    marginLeft: 8,
   },
   headerRight: {
     flexDirection: 'row',
@@ -1108,8 +1362,8 @@ const styles = StyleSheet.create({
   },
   cartBadge: {
     position: 'absolute',
-    top: 0,
-    right: 0,
+    top: 2,
+    right: 2,
     backgroundColor: COLORS.gold,
     borderRadius: 10,
     width: 20,
@@ -1119,7 +1373,7 @@ const styles = StyleSheet.create({
   },
   cartBadgeText: {
     color: COLORS.black,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
   },
   
@@ -1128,160 +1382,319 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: COLORS.blackMedium,
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
     borderTopWidth: 1,
-    borderTopColor: COLORS.gold,
+    borderTopColor: 'rgba(212, 175, 55, 0.3)',
+    alignItems: 'center',
   },
   navItem: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
-  navItemActive: {
-    borderTopWidth: 2,
-    borderTopColor: COLORS.gold,
-    marginTop: -9,
-    paddingTop: 9,
-  },
+  navItemActive: {},
   navText: {
     color: COLORS.gray,
-    fontSize: 12,
+    fontSize: 10,
     marginTop: 4,
   },
   navTextActive: {
     color: COLORS.gold,
   },
-  navCartBadge: {
+  navItemCenter: {
+    flex: 1,
+    alignItems: 'center',
+    marginTop: -30,
+  },
+  navItemCenterGradient: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: COLORS.black,
+  },
+  navCenterBadge: {
     position: 'absolute',
-    top: -4,
-    right: -8,
-    backgroundColor: COLORS.gold,
-    borderRadius: 8,
-    width: 16,
-    height: 16,
+    top: -5,
+    right: -5,
+    backgroundColor: COLORS.error,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  navCartBadgeText: {
-    color: COLORS.black,
-    fontSize: 10,
+  navCenterBadgeText: {
+    color: COLORS.white,
+    fontSize: 11,
     fontWeight: 'bold',
   },
   
   // Hero Section
   heroSection: {
-    height: 280,
-    marginBottom: 16,
+    height: 380,
   },
-  heroGradient: {
+  heroBackground: {
     flex: 1,
-    justifyContent: 'center',
+  },
+  heroBackgroundImage: {
+    opacity: 0.8,
+  },
+  heroOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: 30,
+  },
+  heroContent: {
     alignItems: 'center',
-    padding: 20,
   },
   crownContainer: {
     marginBottom: 8,
   },
   heroTitle: {
-    fontSize: 56,
+    fontSize: 64,
     fontWeight: 'bold',
     color: COLORS.gold,
-    letterSpacing: 8,
-    textShadowColor: 'rgba(212, 175, 55, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
+    letterSpacing: 12,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 10,
   },
+  heroTitleUnderline: {
+    width: 150,
+    height: 3,
+    backgroundColor: COLORS.gold,
+    marginTop: -5,
+    marginBottom: 5,
+  },
   heroSubtitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: COLORS.white,
-    letterSpacing: 6,
-    marginTop: -4,
+    letterSpacing: 8,
   },
   heroTagline: {
-    fontSize: 24,
+    fontSize: 22,
     color: COLORS.goldLight,
     fontStyle: 'italic',
     marginTop: 8,
   },
+  heroCategoriesContainer: {
+    marginTop: 20,
+  },
   heroCategories: {
-    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 20,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 25,
     borderWidth: 1,
     borderColor: COLORS.gold,
   },
   heroCategoryText: {
     color: COLORS.goldLight,
-    fontSize: 14,
+    fontSize: 11,
     letterSpacing: 1,
+    fontWeight: '600',
+  },
+  heroDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.gold,
+    marginHorizontal: 8,
+  },
+
+  // Quick Actions
+  quickActions: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    marginTop: -20,
+    marginBottom: 16,
+  },
+  quickActionButton: {
+    flex: 1,
+    marginRight: 8,
+    borderRadius: 25,
+    overflow: 'hidden',
+  },
+  quickActionGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+  },
+  quickActionText: {
+    color: COLORS.black,
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginLeft: 8,
+  },
+  quickActionButtonOutline: {
+    flex: 1,
+    marginLeft: 8,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: COLORS.gold,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  quickActionTextOutline: {
+    color: COLORS.gold,
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginLeft: 8,
   },
   
   // Delivery Banner
   deliveryBanner: {
+    marginHorizontal: 16,
+    marginBottom: 20,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
+  },
+  deliveryBannerGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.blackMedium,
-    paddingVertical: 12,
-    marginHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 8,
+    padding: 16,
   },
-  deliveryBannerText: {
+  deliveryBannerContent: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  deliveryBannerTitle: {
     color: COLORS.white,
-    fontSize: 14,
-    marginLeft: 8,
+    fontSize: 15,
+    fontWeight: '600',
   },
-  freeDeliveryBanner: {
+  deliveryBannerSubtitle: {
+    color: COLORS.gold,
+    fontSize: 13,
+    marginTop: 2,
+  },
+  
+  // Section Headers
+  sectionHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.gold,
-    paddingVertical: 10,
     marginHorizontal: 16,
-    borderRadius: 8,
     marginBottom: 16,
   },
-  freeDeliveryText: {
-    color: COLORS.black,
-    fontSize: 14,
+  sectionTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
-    marginLeft: 8,
+    color: COLORS.gold,
+  },
+  sectionLink: {
+    color: COLORS.goldLight,
+    fontSize: 14,
+  },
+  sectionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(212, 175, 55, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  sectionBadgeText: {
+    color: COLORS.gold,
+    fontSize: 12,
+    marginLeft: 4,
   },
   
   // Categories Section
   categoriesSection: {
     marginBottom: 24,
   },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: COLORS.gold,
-    marginHorizontal: 16,
-    marginBottom: 16,
-  },
   categoriesScroll: {
     paddingLeft: 16,
   },
   categoryCard: {
-    alignItems: 'center',
-    marginRight: 16,
-    width: 90,
+    width: 130,
+    height: 100,
+    marginRight: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
-  categoryGradient: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
+  categoryImage: {
+    width: '100%',
+    height: '100%',
+  },
+  categoryImageStyle: {
+    borderRadius: 12,
+  },
+  categoryOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    padding: 10,
   },
   categoryName: {
     color: COLORS.white,
-    fontSize: 12,
-    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
+  },
+  categoryGoldBar: {
+    height: 3,
+    backgroundColor: COLORS.gold,
+  },
+  
+  // Featured Section
+  featuredSection: {
+    marginBottom: 24,
+  },
+  featuredScroll: {
+    paddingLeft: 16,
+  },
+  featuredCard: {
+    width: 160,
+    height: 200,
+    marginRight: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: COLORS.blackMedium,
+  },
+  featuredImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  featuredOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    padding: 12,
+  },
+  featuredName: {
+    color: COLORS.white,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  featuredPrice: {
+    color: COLORS.gold,
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 4,
+  },
+  featuredAddButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: COLORS.gold,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   
   // Popular Section
@@ -1292,63 +1705,126 @@ const styles = StyleSheet.create({
   popularCard: {
     flexDirection: 'row',
     backgroundColor: COLORS.blackMedium,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
     marginBottom: 12,
-    alignItems: 'center',
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.blackMedium,
+    borderColor: 'rgba(212, 175, 55, 0.1)',
+  },
+  popularImage: {
+    width: 100,
+    height: 100,
   },
   popularInfo: {
     flex: 1,
+    padding: 12,
+    justifyContent: 'center',
   },
   popularName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: COLORS.white,
-    marginBottom: 4,
+  },
+  popularQuantityBadge: {
+    backgroundColor: 'rgba(212, 175, 55, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 4,
   },
   popularQuantity: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.gold,
-    marginBottom: 4,
   },
   popularDesc: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.gray,
-    marginBottom: 8,
+    marginTop: 4,
+    lineHeight: 16,
   },
   popularPrice: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: COLORS.gold,
+    marginTop: 6,
   },
-  addButton: {
-    backgroundColor: COLORS.gold,
-    borderRadius: 20,
-    width: 40,
-    height: 40,
+  popularAddButton: {
+    justifyContent: 'center',
+    paddingRight: 12,
+  },
+  popularAddGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  // Ambiance Section
+  ambianceSection: {
+    marginBottom: 24,
+  },
+  ambianceCard: {
+    marginHorizontal: 16,
+    height: 200,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  ambianceImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  ambianceOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    padding: 20,
+  },
+  ambianceText: {
+    color: COLORS.grayLight,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  ambianceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.gold,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    alignSelf: 'flex-start',
+  },
+  ambianceButtonText: {
+    color: COLORS.black,
+    fontWeight: 'bold',
+    marginRight: 8,
   },
   
   // Order CTA
   orderCTA: {
     marginHorizontal: 16,
     marginBottom: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   orderCTAGradient: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+  },
+  orderCTAContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   orderCTAText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.black,
-    marginRight: 8,
+    marginLeft: 12,
   },
   
   // Menu Screen
@@ -1358,16 +1834,15 @@ const styles = StyleSheet.create({
   categoryTabs: {
     maxHeight: 50,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.blackMedium,
+    borderBottomColor: 'rgba(212, 175, 55, 0.2)',
   },
   categoryTabsContent: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   categoryTab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
     marginHorizontal: 4,
     borderRadius: 20,
     backgroundColor: COLORS.blackMedium,
@@ -1378,65 +1853,70 @@ const styles = StyleSheet.create({
   categoryTabText: {
     color: COLORS.gold,
     fontSize: 14,
-    marginLeft: 6,
+    fontWeight: '600',
   },
   categoryTabTextActive: {
     color: COLORS.black,
-    fontWeight: 'bold',
   },
   menuScroll: {
     flex: 1,
-    padding: 16,
+  },
+  menuGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 8,
   },
   menuCard: {
-    backgroundColor: COLORS.blackMedium,
-    borderRadius: 12,
-    marginBottom: 12,
+    width: (width - 32) / 2,
+    height: 180,
+    margin: 4,
+    borderRadius: 16,
     overflow: 'hidden',
+    backgroundColor: COLORS.blackMedium,
+  },
+  menuCardImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  menuCardOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
   },
   menuCardContent: {
-    flexDirection: 'row',
-    padding: 16,
-    alignItems: 'center',
-  },
-  menuCardInfo: {
-    flex: 1,
+    padding: 12,
   },
   menuCardName: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: 'bold',
     color: COLORS.white,
-    marginBottom: 4,
   },
   menuCardQuantity: {
-    fontSize: 12,
-    color: COLORS.gold,
-    marginBottom: 4,
-  },
-  menuCardDesc: {
-    fontSize: 13,
-    color: COLORS.gray,
-    marginBottom: 8,
-    lineHeight: 18,
+    fontSize: 11,
+    color: COLORS.goldLight,
+    marginTop: 2,
   },
   menuCardPrice: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: COLORS.gold,
+    marginTop: 4,
   },
-  menuAddButton: {
+  menuCardAddButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
     backgroundColor: COLORS.gold,
-    borderRadius: 25,
-    width: 50,
-    height: 50,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 12,
   },
   
   // Cart Screen
   screenTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: 'bold',
     color: COLORS.gold,
     marginHorizontal: 16,
@@ -1448,17 +1928,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 60,
   },
+  emptyCartIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   emptyCartText: {
-    fontSize: 18,
+    fontSize: 20,
+    color: COLORS.white,
+    fontWeight: '600',
+  },
+  emptyCartSubtext: {
+    fontSize: 14,
     color: COLORS.gray,
-    marginTop: 16,
-    marginBottom: 24,
+    marginTop: 8,
+    marginBottom: 30,
   },
   emptyCartButton: {
-    backgroundColor: COLORS.gold,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
     borderRadius: 25,
+    overflow: 'hidden',
+  },
+  emptyCartGradient: {
+    paddingHorizontal: 30,
+    paddingVertical: 14,
   },
   emptyCartButtonText: {
     color: COLORS.black,
@@ -1471,31 +1967,35 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.blackMedium,
     marginHorizontal: 16,
     marginBottom: 12,
-    padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  cartItemImage: {
+    width: 80,
+    height: 80,
   },
   cartItemInfo: {
     flex: 1,
+    paddingHorizontal: 12,
   },
   cartItemName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: COLORS.white,
-    marginBottom: 4,
   },
   cartItemPrice: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.gray,
+    marginTop: 2,
   },
   cartItemActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 12,
   },
   quantityButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     borderWidth: 1,
     borderColor: COLORS.gold,
     justifyContent: 'center',
@@ -1505,12 +2005,13 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 16,
     fontWeight: 'bold',
-    marginHorizontal: 12,
+    marginHorizontal: 10,
   },
   cartItemTotal: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: COLORS.gold,
+    paddingRight: 16,
     minWidth: 60,
     textAlign: 'right',
   },
@@ -1520,8 +2021,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.blackMedium,
     marginHorizontal: 16,
     marginTop: 8,
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 16,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -1540,18 +2041,22 @@ const styles = StyleSheet.create({
     color: COLORS.success,
     fontWeight: 'bold',
   },
+  freeDeliveryHintContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
   freeDeliveryHint: {
     fontSize: 13,
     color: COLORS.gold,
-    textAlign: 'center',
-    marginBottom: 12,
-    fontStyle: 'italic',
+    marginLeft: 8,
   },
   summaryTotal: {
     borderTopWidth: 1,
-    borderTopColor: COLORS.gold,
-    paddingTop: 12,
-    marginTop: 4,
+    borderTopColor: 'rgba(212, 175, 55, 0.3)',
+    paddingTop: 16,
+    marginTop: 8,
     marginBottom: 0,
   },
   summaryTotalLabel: {
@@ -1560,7 +2065,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   summaryTotalValue: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     color: COLORS.gold,
   },
@@ -1572,29 +2077,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginHorizontal: 16,
     marginTop: 16,
-    padding: 12,
+    padding: 14,
     backgroundColor: COLORS.blackMedium,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.gold,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
   },
   paymentText: {
     color: COLORS.gold,
     fontSize: 15,
-    marginLeft: 8,
+    marginLeft: 10,
+    fontWeight: '500',
   },
   
   // Checkout Button
   checkoutButton: {
     marginHorizontal: 16,
     marginTop: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   checkoutGradient: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 18,
   },
   checkoutButtonText: {
     fontSize: 18,
@@ -1628,12 +2135,12 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: COLORS.blackMedium,
-    borderRadius: 8,
-    padding: 14,
+    borderRadius: 12,
+    padding: 16,
     color: COLORS.white,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: COLORS.blackMedium,
+    borderColor: 'rgba(212, 175, 55, 0.2)',
   },
   inputMultiline: {
     height: 80,
@@ -1652,8 +2159,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.blackMedium,
     marginHorizontal: 16,
     marginTop: 24,
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 16,
   },
   checkoutSummaryTitle: {
     fontSize: 18,
@@ -1664,7 +2171,7 @@ const styles = StyleSheet.create({
   checkoutItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   checkoutItemName: {
     color: COLORS.white,
@@ -1676,16 +2183,16 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: COLORS.gray,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     marginVertical: 12,
   },
   checkoutTotal: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 8,
-    paddingTop: 12,
+    paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: COLORS.gold,
+    borderTopColor: 'rgba(212, 175, 55, 0.3)',
   },
   checkoutTotalLabel: {
     fontSize: 18,
@@ -1693,7 +2200,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   checkoutTotalValue: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     color: COLORS.gold,
   },
@@ -1705,13 +2212,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.blackMedium,
     marginHorizontal: 16,
     marginTop: 16,
-    padding: 16,
-    borderRadius: 12,
+    padding: 18,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.gold,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
   },
   paymentMethodInfo: {
-    marginLeft: 12,
+    marginLeft: 14,
   },
   paymentMethodTitle: {
     fontSize: 16,
@@ -1728,39 +2235,47 @@ const styles = StyleSheet.create({
   placeOrderButton: {
     marginHorizontal: 16,
     marginTop: 24,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   placeOrderGradient: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 18,
-    borderRadius: 12,
   },
   placeOrderText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.black,
-    marginRight: 8,
+    marginRight: 10,
   },
   
   // Contact Screen
   contactHeader: {
     alignItems: 'center',
-    paddingVertical: 30,
+    paddingVertical: 40,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.blackMedium,
+    borderBottomColor: 'rgba(212, 175, 55, 0.2)',
   },
   contactTitle: {
-    fontSize: 40,
+    fontSize: 44,
     fontWeight: 'bold',
     color: COLORS.gold,
-    letterSpacing: 4,
-    marginTop: 8,
+    letterSpacing: 6,
+    marginTop: 12,
   },
   contactSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: COLORS.white,
-    letterSpacing: 3,
+    letterSpacing: 4,
+    marginTop: -2,
+  },
+  contactHeaderLine: {
+    width: 60,
+    height: 3,
+    backgroundColor: COLORS.gold,
+    marginTop: 16,
   },
   contactSection: {
     padding: 16,
@@ -1776,30 +2291,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.blackMedium,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 12,
   },
   contactIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: COLORS.black,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.gold,
   },
   contactCardInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 14,
   },
   contactCardTitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: COLORS.gray,
     marginBottom: 2,
   },
   contactCardValue: {
-    fontSize: 16,
+    fontSize: 15,
     color: COLORS.white,
     fontWeight: '500',
   },
@@ -1810,63 +2322,80 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.blackMedium,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 12,
   },
   socialIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 50,
+    height: 50,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
   socialCardInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 14,
   },
   socialCardTitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: COLORS.gray,
     marginBottom: 2,
   },
   socialCardValue: {
-    fontSize: 16,
+    fontSize: 15,
     color: COLORS.white,
     fontWeight: '500',
   },
   
   // Delivery Info Section
   deliveryInfoSection: {
+    marginHorizontal: 16,
+    marginBottom: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  deliveryInfoGradient: {
     alignItems: 'center',
     padding: 30,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: COLORS.blackMedium,
-    borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.gold,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
+    borderRadius: 20,
   },
   deliveryInfoTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.gold,
-    marginTop: 12,
+    marginTop: 14,
     marginBottom: 8,
   },
   deliveryInfoText: {
     fontSize: 16,
     color: COLORS.white,
-    marginBottom: 8,
+  },
+  deliveryInfoDivider: {
+    width: 40,
+    height: 2,
+    backgroundColor: COLORS.gold,
+    marginVertical: 16,
   },
   deliveryInfoFee: {
     fontSize: 14,
     color: COLORS.gray,
   },
+  deliveryInfoFreeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.gold,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 12,
+  },
   deliveryInfoFree: {
-    fontSize: 15,
-    color: COLORS.success,
+    fontSize: 14,
+    color: COLORS.black,
     fontWeight: 'bold',
-    marginTop: 4,
+    marginLeft: 8,
   },
   
   // Success Screen
@@ -1879,39 +2408,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
   },
-  successIcon: {
-    marginBottom: 20,
+  successIconContainer: {
+    marginBottom: 24,
+  },
+  successIconGradient: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   successTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     color: COLORS.gold,
-    marginBottom: 8,
+    marginBottom: 16,
+  },
+  successOrderNumberContainer: {
+    alignItems: 'center',
+    backgroundColor: COLORS.blackMedium,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+  },
+  successOrderNumberLabel: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginBottom: 4,
   },
   successOrderNumber: {
-    fontSize: 16,
-    color: COLORS.white,
-    marginBottom: 20,
-    backgroundColor: COLORS.blackMedium,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    fontSize: 18,
+    color: COLORS.gold,
+    fontWeight: 'bold',
   },
   successMessage: {
-    fontSize: 16,
+    fontSize: 15,
     color: COLORS.grayLight,
     textAlign: 'center',
-    marginBottom: 12,
-    lineHeight: 24,
+    marginBottom: 20,
+    lineHeight: 22,
+    paddingHorizontal: 20,
+  },
+  successPaymentContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 30,
   },
   successPayment: {
     fontSize: 14,
     color: COLORS.gold,
-    marginBottom: 30,
+    marginLeft: 10,
   },
   successContact: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 40,
   },
   successContactText: {
     fontSize: 14,
@@ -1919,25 +2470,28 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   successPhoneButton: {
+    borderRadius: 25,
+    overflow: 'hidden',
+  },
+  successPhoneGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.gold,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 25,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
   },
   successPhoneText: {
     color: COLORS.black,
     fontSize: 16,
     fontWeight: 'bold',
-    marginLeft: 8,
+    marginLeft: 10,
   },
   successHomeButton: {
     width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   successHomeGradient: {
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 18,
     alignItems: 'center',
   },
   successHomeText: {
@@ -1949,43 +2503,62 @@ const styles = StyleSheet.create({
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(0,0,0,0.9)',
     justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: COLORS.blackLight,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    maxHeight: '85%',
   },
   modalClose: {
     position: 'absolute',
     top: 16,
     right: 16,
-    zIndex: 1,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 20,
+    padding: 4,
+  },
+  modalImage: {
+    width: '100%',
+    height: 200,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+  },
+  modalBody: {
+    padding: 24,
   },
   modalHeader: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   modalTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
     color: COLORS.white,
   },
+  modalQuantityBadge: {
+    backgroundColor: 'rgba(212, 175, 55, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
   modalQuantityInfo: {
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.gold,
-    marginTop: 4,
   },
   modalDescription: {
     fontSize: 15,
     color: COLORS.gray,
     lineHeight: 22,
+    marginTop: 12,
     marginBottom: 16,
   },
   modalPrice: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: 'bold',
     color: COLORS.gold,
     marginBottom: 24,
@@ -1995,10 +2568,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.blackMedium,
+    borderRadius: 16,
   },
   modalQuantityLabel: {
     fontSize: 16,
     color: COLORS.white,
+    fontWeight: '500',
   },
   modalQuantityControls: {
     flexDirection: 'row',
@@ -2008,29 +2586,32 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: COLORS.gold,
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalQuantityValue: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     color: COLORS.white,
-    marginHorizontal: 20,
+    marginHorizontal: 24,
   },
   modalAddButton: {
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   modalAddGradient: {
-    paddingVertical: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 18,
   },
   modalAddText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.black,
+    marginLeft: 10,
   },
   
   bottomSpacing: {
