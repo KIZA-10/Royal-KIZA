@@ -175,8 +175,9 @@ const getMenuItemImage = (category: string, name: string, customImageUrl?: strin
 
 export default function KizaRestaurant() {
   // States
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'menu' | 'cart' | 'checkout' | 'contact' | 'order_success'>('home');
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'menu' | 'cart' | 'checkout' | 'contact' | 'order_success' | 'chat' | 'reviews'>('home');
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [bestsellers, setBestsellers] = useState<MenuItem[]>([]);
   const [restaurantInfo, setRestaurantInfo] = useState<RestaurantInfo | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('entrees');
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -185,6 +186,16 @@ export default function KizaRestaurant() {
   const [showItemModal, setShowItemModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [itemQuantity, setItemQuantity] = useState(1);
+  const [showChatbot, setShowChatbot] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{role: string, content: string}>>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'stripe'>('cash');
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewName, setReviewName] = useState('');
   
   // Delivery Address State
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
@@ -205,12 +216,14 @@ export default function KizaRestaurant() {
   const loadInitialData = async () => {
     try {
       setLoading(true);
-      const [menuRes, infoRes] = await Promise.all([
+      const [menuRes, infoRes, bestsellersRes] = await Promise.all([
         api.get('/menu'),
         api.get('/restaurant-info'),
+        api.get('/menu/bestsellers'),
       ]);
       setMenuItems(menuRes.data);
       setRestaurantInfo(infoRes.data);
+      setBestsellers(bestsellersRes.data);
     } catch (error) {
       console.error('Error loading data:', error);
       Alert.alert('Erreur', 'Impossible de charger les données. Veuillez réessayer.');
@@ -308,18 +321,74 @@ export default function KizaRestaurant() {
         delivery_address: deliveryAddress,
         total_amount: getCartTotal(),
         delivery_fee: getDeliveryFee(),
+        payment_method: paymentMethod === 'cash' ? 'cash_on_delivery' : 'stripe',
       };
 
       const response = await api.post('/orders', orderData);
-      setOrderNumber(response.data.order_number);
-      setCart([]);
-      await AsyncStorage.removeItem('kiza_cart');
-      setCurrentScreen('order_success');
+      
+      if (paymentMethod === 'stripe') {
+        // Create Stripe checkout session
+        const paymentRes = await api.post('/payments/create-checkout', {
+          order_id: response.data.id,
+          origin_url: API_BASE_URL,
+        });
+        // Open Stripe checkout
+        Linking.openURL(paymentRes.data.checkout_url);
+        setOrderNumber(response.data.order_number);
+      } else {
+        setOrderNumber(response.data.order_number);
+        setCart([]);
+        await AsyncStorage.removeItem('kiza_cart');
+        setCurrentScreen('order_success');
+      }
     } catch (error) {
       console.error('Error placing order:', error);
       Alert.alert('Erreur', 'Impossible de passer la commande. Veuillez réessayer.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Chatbot function
+  const sendChatMessage = async () => {
+    if (!chatInput.trim()) return;
+    
+    const userMessage = chatInput.trim();
+    setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setChatInput('');
+    setChatLoading(true);
+    
+    try {
+      const response = await api.post('/chat', { message: userMessage });
+      setChatMessages(prev => [...prev, { role: 'assistant', content: response.data.response }]);
+    } catch (error) {
+      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Désolé, une erreur est survenue. Veuillez réessayer.' }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  // Submit review function
+  const submitReview = async () => {
+    if (!reviewName.trim() || !reviewComment.trim()) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs.');
+      return;
+    }
+    
+    try {
+      await api.post('/reviews', {
+        menu_item_id: selectedItem?.id || '0',
+        customer_name: reviewName,
+        rating: reviewRating,
+        comment: reviewComment,
+      });
+      Alert.alert('Merci !', 'Votre avis a été enregistré.');
+      setShowReviewModal(false);
+      setReviewComment('');
+      setReviewName('');
+      setReviewRating(5);
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible d\'envoyer l\'avis.');
     }
   };
 
@@ -591,7 +660,7 @@ export default function KizaRestaurant() {
         </ScrollView>
       </View>
 
-      {/* Popular Items Section */}
+      {/* Popular Items Section - Using bestsellers from API */}
       <View style={styles.popularSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Nos Best-Sellers</Text>
@@ -600,7 +669,7 @@ export default function KizaRestaurant() {
             <Text style={styles.sectionBadgeText}>Populaire</Text>
           </View>
         </View>
-        {menuItems.slice(0, 4).map((item) => (
+        {bestsellers.slice(0, 5).map((item) => (
           <TouchableOpacity
             key={item.id}
             style={styles.popularCard}
@@ -610,7 +679,7 @@ export default function KizaRestaurant() {
             }}
           >
             <Image
-              source={{ uri: getMenuItemImage(item.category, item.name) }}
+              source={{ uri: getMenuItemImage(item.category, item.name, item.image_url) }}
               style={styles.popularImage}
             />
             <View style={styles.popularInfo}>
@@ -984,13 +1053,59 @@ export default function KizaRestaurant() {
           </View>
         </View>
 
-        {/* Payment Method */}
-        <View style={styles.paymentMethod}>
-          <MaterialIcons name="local-atm" size={28} color={COLORS.gold} />
-          <View style={styles.paymentMethodInfo}>
-            <Text style={styles.paymentMethodTitle}>Paiement à la livraison</Text>
-            <Text style={styles.paymentMethodDesc}>Payez en espèces ou par carte au livreur</Text>
-          </View>
+        {/* Payment Method Selection */}
+        <View style={styles.paymentMethodSection}>
+          <Text style={styles.paymentMethodSectionTitle}>Mode de paiement</Text>
+          
+          <TouchableOpacity
+            style={[
+              styles.paymentMethodOption,
+              paymentMethod === 'cash' && styles.paymentMethodOptionActive
+            ]}
+            onPress={() => setPaymentMethod('cash')}
+          >
+            <View style={styles.paymentMethodOptionLeft}>
+              <MaterialIcons name="local-atm" size={28} color={paymentMethod === 'cash' ? COLORS.gold : COLORS.gray} />
+              <View style={styles.paymentMethodOptionInfo}>
+                <Text style={[
+                  styles.paymentMethodOptionTitle,
+                  paymentMethod === 'cash' && styles.paymentMethodOptionTitleActive
+                ]}>Paiement à la livraison</Text>
+                <Text style={styles.paymentMethodOptionDesc}>Payez en espèces ou par carte au livreur</Text>
+              </View>
+            </View>
+            <View style={[
+              styles.paymentMethodRadio,
+              paymentMethod === 'cash' && styles.paymentMethodRadioActive
+            ]}>
+              {paymentMethod === 'cash' && <View style={styles.paymentMethodRadioInner} />}
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[
+              styles.paymentMethodOption,
+              paymentMethod === 'stripe' && styles.paymentMethodOptionActive
+            ]}
+            onPress={() => setPaymentMethod('stripe')}
+          >
+            <View style={styles.paymentMethodOptionLeft}>
+              <MaterialIcons name="credit-card" size={28} color={paymentMethod === 'stripe' ? COLORS.gold : COLORS.gray} />
+              <View style={styles.paymentMethodOptionInfo}>
+                <Text style={[
+                  styles.paymentMethodOptionTitle,
+                  paymentMethod === 'stripe' && styles.paymentMethodOptionTitleActive
+                ]}>Payer en ligne</Text>
+                <Text style={styles.paymentMethodOptionDesc}>Paiement sécurisé par carte bancaire</Text>
+              </View>
+            </View>
+            <View style={[
+              styles.paymentMethodRadio,
+              paymentMethod === 'stripe' && styles.paymentMethodRadioActive
+            ]}>
+              {paymentMethod === 'stripe' && <View style={styles.paymentMethodRadioInner} />}
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Place Order Button */}
@@ -1117,6 +1232,19 @@ export default function KizaRestaurant() {
             <Text style={styles.socialCardValue}>@{restaurantInfo?.social_media.tiktok}</Text>
           </View>
           <MaterialIcons name="arrow-forward-ios" size={16} color={COLORS.gold} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Review CTA */}
+      <View style={styles.reviewCTASection}>
+        <TouchableOpacity
+          style={styles.reviewCTAButton}
+          onPress={() => setShowReviewModal(true)}
+        >
+          <LinearGradient colors={[COLORS.gold, COLORS.goldDark]} style={styles.reviewCTAGradient}>
+            <Ionicons name="star" size={24} color={COLORS.black} />
+            <Text style={styles.reviewCTAText}>Laissez votre avis</Text>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
 
@@ -1284,6 +1412,177 @@ export default function KizaRestaurant() {
     </Modal>
   );
 
+  // Chatbot Modal
+  const renderChatbotModal = () => (
+    <Modal
+      visible={showChatbot}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowChatbot(false)}
+    >
+      <View style={styles.chatbotModalOverlay}>
+        <View style={styles.chatbotModalContent}>
+          <View style={styles.chatbotHeader}>
+            <View style={styles.chatbotHeaderLeft}>
+              <LinearGradient colors={[COLORS.gold, COLORS.goldDark]} style={styles.chatbotAvatar}>
+                <MaterialIcons name="smart-toy" size={24} color={COLORS.black} />
+              </LinearGradient>
+              <View>
+                <Text style={styles.chatbotHeaderTitle}>Assistant KIZA</Text>
+                <Text style={styles.chatbotHeaderSubtitle}>En ligne</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.chatbotCloseButton}
+              onPress={() => setShowChatbot(false)}
+            >
+              <Ionicons name="close" size={24} color={COLORS.white} />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.chatbotMessages} contentContainerStyle={styles.chatbotMessagesContent}>
+            {chatMessages.length === 0 && (
+              <View style={styles.chatbotWelcome}>
+                <MaterialIcons name="waving-hand" size={40} color={COLORS.gold} />
+                <Text style={styles.chatbotWelcomeTitle}>Bienvenue chez KIZA!</Text>
+                <Text style={styles.chatbotWelcomeText}>
+                  Je suis votre assistant virtuel. Posez-moi vos questions sur le menu, les prix, la livraison ou les horaires!
+                </Text>
+              </View>
+            )}
+            {chatMessages.map((msg, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.chatMessage,
+                  msg.role === 'user' ? styles.chatMessageUser : styles.chatMessageBot
+                ]}
+              >
+                <Text style={[
+                  styles.chatMessageText,
+                  msg.role === 'user' ? styles.chatMessageTextUser : styles.chatMessageTextBot
+                ]}>{msg.content}</Text>
+              </View>
+            ))}
+            {chatLoading && (
+              <View style={styles.chatMessageBot}>
+                <ActivityIndicator size="small" color={COLORS.gold} />
+              </View>
+            )}
+          </ScrollView>
+          
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+            <View style={styles.chatbotInputContainer}>
+              <TextInput
+                style={styles.chatbotInput}
+                value={chatInput}
+                onChangeText={setChatInput}
+                placeholder="Posez votre question..."
+                placeholderTextColor={COLORS.gray}
+                multiline
+              />
+              <TouchableOpacity
+                style={styles.chatbotSendButton}
+                onPress={sendChatMessage}
+                disabled={chatLoading || !chatInput.trim()}
+              >
+                <LinearGradient colors={[COLORS.gold, COLORS.goldDark]} style={styles.chatbotSendGradient}>
+                  <Ionicons name="send" size={20} color={COLORS.black} />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Review Modal
+  const renderReviewModal = () => (
+    <Modal
+      visible={showReviewModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowReviewModal(false)}
+    >
+      <View style={styles.reviewModalOverlay}>
+        <View style={styles.reviewModalContent}>
+          <TouchableOpacity
+            style={styles.reviewModalClose}
+            onPress={() => setShowReviewModal(false)}
+          >
+            <Ionicons name="close" size={24} color={COLORS.white} />
+          </TouchableOpacity>
+          
+          <Text style={styles.reviewModalTitle}>Laissez votre avis</Text>
+          <Text style={styles.reviewModalSubtitle}>Votre opinion compte pour nous!</Text>
+          
+          <View style={styles.reviewStarsContainer}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <TouchableOpacity
+                key={star}
+                onPress={() => setReviewRating(star)}
+              >
+                <Ionicons
+                  name={star <= reviewRating ? "star" : "star-outline"}
+                  size={40}
+                  color={COLORS.gold}
+                  style={styles.reviewStar}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+          
+          <View style={styles.reviewInputGroup}>
+            <Text style={styles.reviewInputLabel}>Votre nom</Text>
+            <TextInput
+              style={styles.reviewInput}
+              value={reviewName}
+              onChangeText={setReviewName}
+              placeholder="Entrez votre nom"
+              placeholderTextColor={COLORS.gray}
+            />
+          </View>
+          
+          <View style={styles.reviewInputGroup}>
+            <Text style={styles.reviewInputLabel}>Votre commentaire</Text>
+            <TextInput
+              style={[styles.reviewInput, styles.reviewInputMultiline]}
+              value={reviewComment}
+              onChangeText={setReviewComment}
+              placeholder="Partagez votre expérience..."
+              placeholderTextColor={COLORS.gray}
+              multiline
+              numberOfLines={4}
+            />
+          </View>
+          
+          <TouchableOpacity
+            style={styles.reviewSubmitButton}
+            onPress={submitReview}
+          >
+            <LinearGradient colors={[COLORS.gold, COLORS.goldDark]} style={styles.reviewSubmitGradient}>
+              <Text style={styles.reviewSubmitText}>Envoyer mon avis</Text>
+              <Ionicons name="send" size={20} color={COLORS.black} />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Floating Chatbot Button
+  const renderFloatingChatButton = () => (
+    <TouchableOpacity
+      style={styles.floatingChatButton}
+      onPress={() => setShowChatbot(true)}
+    >
+      <LinearGradient colors={[COLORS.gold, COLORS.goldDark]} style={styles.floatingChatGradient}>
+        <MaterialIcons name="chat" size={28} color={COLORS.black} />
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={[COLORS.black, COLORS.blackLight]} style={styles.gradient}>
@@ -1298,6 +1597,9 @@ export default function KizaRestaurant() {
         
         {currentScreen !== 'order_success' && currentScreen !== 'checkout' && renderBottomNav()}
         {renderItemModal()}
+        {renderChatbotModal()}
+        {renderReviewModal()}
+        {currentScreen !== 'order_success' && currentScreen !== 'checkout' && renderFloatingChatButton()}
       </LinearGradient>
     </SafeAreaView>
   );
@@ -2630,5 +2932,325 @@ const styles = StyleSheet.create({
   
   bottomSpacing: {
     height: 100,
+  },
+  
+  // Payment Method Section Styles
+  paymentMethodSection: {
+    marginHorizontal: 16,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  paymentMethodSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.gold,
+    marginBottom: 16,
+  },
+  paymentMethodOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.blackMedium,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.2)',
+  },
+  paymentMethodOptionActive: {
+    borderColor: COLORS.gold,
+    borderWidth: 2,
+  },
+  paymentMethodOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  paymentMethodOptionInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  paymentMethodOptionTitle: {
+    fontSize: 16,
+    color: COLORS.white,
+    fontWeight: '600',
+  },
+  paymentMethodOptionTitleActive: {
+    color: COLORS.gold,
+  },
+  paymentMethodOptionDesc: {
+    fontSize: 13,
+    color: COLORS.gray,
+    marginTop: 2,
+  },
+  paymentMethodRadio: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: COLORS.gray,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  paymentMethodRadioActive: {
+    borderColor: COLORS.gold,
+  },
+  paymentMethodRadioInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: COLORS.gold,
+  },
+  
+  // Floating Chat Button Styles
+  floatingChatButton: {
+    position: 'absolute',
+    bottom: 90,
+    right: 16,
+    zIndex: 100,
+  },
+  floatingChatGradient: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: COLORS.gold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  
+  // Chatbot Modal Styles
+  chatbotModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'flex-end',
+  },
+  chatbotModalContent: {
+    backgroundColor: COLORS.blackLight,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    height: '80%',
+    overflow: 'hidden',
+  },
+  chatbotHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(212, 175, 55, 0.2)',
+  },
+  chatbotHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chatbotAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  chatbotHeaderTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.white,
+  },
+  chatbotHeaderSubtitle: {
+    fontSize: 12,
+    color: COLORS.success,
+  },
+  chatbotCloseButton: {
+    padding: 8,
+  },
+  chatbotMessages: {
+    flex: 1,
+    padding: 16,
+  },
+  chatbotMessagesContent: {
+    paddingBottom: 20,
+  },
+  chatbotWelcome: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  chatbotWelcomeTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.gold,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  chatbotWelcomeText: {
+    fontSize: 14,
+    color: COLORS.gray,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    lineHeight: 20,
+  },
+  chatMessage: {
+    maxWidth: '80%',
+    padding: 12,
+    borderRadius: 16,
+    marginBottom: 12,
+  },
+  chatMessageUser: {
+    alignSelf: 'flex-end',
+    backgroundColor: COLORS.gold,
+    borderBottomRightRadius: 4,
+  },
+  chatMessageBot: {
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.blackMedium,
+    borderBottomLeftRadius: 4,
+  },
+  chatMessageText: {
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  chatMessageTextUser: {
+    color: COLORS.black,
+  },
+  chatMessageTextBot: {
+    color: COLORS.white,
+  },
+  chatbotInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(212, 175, 55, 0.2)',
+    backgroundColor: COLORS.blackMedium,
+  },
+  chatbotInput: {
+    flex: 1,
+    backgroundColor: COLORS.blackLight,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    color: COLORS.white,
+    fontSize: 15,
+    maxHeight: 100,
+    marginRight: 10,
+  },
+  chatbotSendButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  chatbotSendGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  // Review Modal Styles
+  reviewModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  reviewModalContent: {
+    backgroundColor: COLORS.blackLight,
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  reviewModalClose: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 10,
+  },
+  reviewModalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.gold,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  reviewModalSubtitle: {
+    fontSize: 14,
+    color: COLORS.gray,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  reviewStarsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  reviewStar: {
+    marginHorizontal: 4,
+  },
+  reviewInputGroup: {
+    marginBottom: 16,
+  },
+  reviewInputLabel: {
+    fontSize: 14,
+    color: COLORS.gold,
+    marginBottom: 8,
+  },
+  reviewInput: {
+    backgroundColor: COLORS.blackMedium,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: COLORS.white,
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.2)',
+  },
+  reviewInputMultiline: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  reviewSubmitButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  reviewSubmitGradient: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  reviewSubmitText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.black,
+    marginRight: 8,
+  },
+  
+  // Review CTA Section Styles
+  reviewCTASection: {
+    marginHorizontal: 16,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  reviewCTAButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  reviewCTAGradient: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  reviewCTAText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.black,
+    marginLeft: 10,
   },
 });

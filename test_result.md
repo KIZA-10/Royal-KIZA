@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Test the KIZA Restaurant API backend with specific scenarios for restaurant info, menu retrieval, category filtering, and order creation functionality"
+user_problem_statement: "Test the KIZA Restaurant API backend with specific scenarios for restaurant info, menu retrieval, category filtering, order creation, chatbot, reviews, and Stripe payment functionality"
 
 backend:
   - task: "Restaurant Info API"
