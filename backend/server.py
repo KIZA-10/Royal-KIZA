@@ -105,12 +105,12 @@ MENU_ITEMS = [
     MenuItem(id="10", name="Poulet Entier Grillé", description="Poulet fermier entier grillé aux herbes, juteux et savoureux", price=17.00, category=Category.GRILLADES),
     MenuItem(id="11", name="Cuisse de Poulet Grillé", description="Cuisse de poulet marinée et grillée à la perfection", price=7.00, category=Category.GRILLADES),
     MenuItem(id="12", name="Côtelettes d'Agneau", description="Côtelettes d'agneau grillées, tendres et parfumées", price=12.00, category=Category.GRILLADES, quantity_info="4 pièces"),
-    MenuItem(id="13", name="Brochettes Viande", description="Brochettes de viande tendre marinée aux herbes", price=3.00, category=Category.GRILLADES, quantity_info="3 pièces"),
-    MenuItem(id="14", name="Brochettes Mixtes", description="Assortiment de brochettes viande et légumes grillés", price=4.00, category=Category.GRILLADES, quantity_info="3 pièces"),
+    MenuItem(id="13", name="Brochettes Viande", description="Brochettes de viande tendre marinée aux herbes", price=3.00, category=Category.GRILLADES, quantity_info="3 pièces", image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/rrqdy1ov_8F254ABE-A4E9-4FDE-BEEF-19547347E207.png"),
+    MenuItem(id="14", name="Brochettes Mixtes", description="Assortiment de brochettes viande et légumes grillés", price=4.00, category=Category.GRILLADES, quantity_info="3 pièces", image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/l45rfnet_063935E9-A005-43EC-BEDA-73397F9F2F9C.png"),
     MenuItem(id="15", name="Canard Sauté", description="Canard sauté aux épices, croustillant et savoureux", price=18.00, category=Category.GRILLADES),
     
     # ============ PLATS PRINCIPAUX ============
-    MenuItem(id="20", name="Pilao", description="Riz parfumé aux épices avec viande tendre, plat traditionnel comorien", price=8.50, category=Category.PLATS),
+    MenuItem(id="20", name="Pilao", description="Riz parfumé aux épices avec viande tendre, plat traditionnel comorien", price=8.50, category=Category.PLATS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/1aulv011_41F43494-C1AB-4649-99C8-216D875EB7F3.png"),
     MenuItem(id="21", name="Cuisse de Poulet Sauce", description="Cuisse de poulet mijotée dans une sauce onctueuse aux épices", price=7.00, category=Category.PLATS),
     MenuItem(id="22", name="Pilons Sauce", description="Pilons de poulet en sauce savoureuse maison", price=5.00, category=Category.PLATS),
     MenuItem(id="23", name="Canard Sauce", description="Canard mijoté dans une sauce riche et parfumée", price=16.00, category=Category.PLATS),

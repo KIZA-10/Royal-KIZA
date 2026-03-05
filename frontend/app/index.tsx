@@ -121,8 +121,13 @@ const CATEGORY_IMAGES: { [key: string]: string } = {
   boissons: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=300&h=200&fit=crop',
 };
 
-// Menu Item Images based on category
-const getMenuItemImage = (category: string, name: string): string => {
+// Menu Item Images based on category - uses custom image if available
+const getMenuItemImage = (category: string, name: string, customImageUrl?: string | null): string => {
+  // If custom image URL exists, use it
+  if (customImageUrl) {
+    return customImageUrl;
+  }
+  
   const images: { [key: string]: string[] } = {
     entrees: [
       'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=300&h=200&fit=crop',
@@ -565,7 +570,7 @@ export default function KizaRestaurant() {
               }}
             >
               <Image
-                source={{ uri: getMenuItemImage(item.category, item.name) }}
+                source={{ uri: getMenuItemImage(item.category, item.name, item.image_url) }}
                 style={styles.featuredImage}
               />
               <LinearGradient
@@ -722,7 +727,7 @@ export default function KizaRestaurant() {
               }}
             >
               <Image
-                source={{ uri: getMenuItemImage(item.category, item.name) }}
+                source={{ uri: getMenuItemImage(item.category, item.name, item.image_url) }}
                 style={styles.menuCardImage}
               />
               <LinearGradient
@@ -779,7 +784,7 @@ export default function KizaRestaurant() {
             return (
               <View key={item.menu_item_id} style={styles.cartItem}>
                 <Image
-                  source={{ uri: menuItem ? getMenuItemImage(menuItem.category, menuItem.name) : FOOD_IMAGES.plat }}
+                  source={{ uri: menuItem ? getMenuItemImage(menuItem.category, menuItem.name, menuItem.image_url) : FOOD_IMAGES.plat }}
                   style={styles.cartItemImage}
                 />
                 <View style={styles.cartItemInfo}>
@@ -1223,7 +1228,7 @@ export default function KizaRestaurant() {
           {selectedItem && (
             <>
               <Image
-                source={{ uri: getMenuItemImage(selectedItem.category, selectedItem.name) }}
+                source={{ uri: getMenuItemImage(selectedItem.category, selectedItem.name, selectedItem.image_url) }}
                 style={styles.modalImage}
               />
               <View style={styles.modalBody}>
