@@ -93,11 +93,11 @@ class Order(BaseModel):
 # Menu Items Data - Updated with all KIZA products
 MENU_ITEMS = [
     # ============ ENTRÉES ============
-    MenuItem(id="1", name="Samoussa", description="Délicieux samoussas croustillants farcis aux légumes et épices", price=2.00, category=Category.ENTREES, quantity_info="3 pièces"),
+    MenuItem(id="1", name="Samoussa", description="Délicieux samoussas croustillants farcis aux légumes et épices", price=2.00, category=Category.ENTREES, quantity_info="3 pièces", image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/5t6ljkkg_2F919575-9B64-4027-BD6F-D8DA6072133F.png"),
     MenuItem(id="2", name="Beignets Goulagoula", description="Beignets africains traditionnels, moelleux et savoureux", price=4.50, category=Category.ENTREES),
     MenuItem(id="3", name="Beignets Goulagoula Nutella", description="Beignets africains garnis de Nutella fondant", price=5.00, category=Category.ENTREES),
-    MenuItem(id="4", name="Kanguer", description="Spécialité comorienne croustillante et parfumée", price=5.00, category=Category.ENTREES),
-    MenuItem(id="5", name="Buns", description="Petits pains moelleux cuits à la vapeur", price=1.50, category=Category.ENTREES),
+    MenuItem(id="4", name="Kanguer", description="Spécialité comorienne croustillante et parfumée", price=5.00, category=Category.ENTREES, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/xkq5wt1m_DF481B61-8A56-43F6-BF06-6C13E88D543E.png"),
+    MenuItem(id="5", name="Buns", description="Petits pains moelleux cuits à la vapeur", price=1.50, category=Category.ENTREES, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/bxvjzh7y_63BA2155-87C1-4738-B3AD-2B5F729565B4.png"),
     MenuItem(id="6", name="Mkatre", description="Pain traditionnel comorien cuit au charbon", price=3.50, category=Category.ENTREES),
     MenuItem(id="7", name="Couscouma", description="Semoule de manioc parfumée aux épices", price=3.50, category=Category.ENTREES),
     
@@ -107,7 +107,7 @@ MENU_ITEMS = [
     MenuItem(id="12", name="Côtelettes d'Agneau", description="Côtelettes d'agneau grillées, tendres et parfumées", price=12.00, category=Category.GRILLADES, quantity_info="4 pièces"),
     MenuItem(id="13", name="Brochettes Viande", description="Brochettes de viande tendre marinée aux herbes", price=3.00, category=Category.GRILLADES, quantity_info="3 pièces", image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/rrqdy1ov_8F254ABE-A4E9-4FDE-BEEF-19547347E207.png"),
     MenuItem(id="14", name="Brochettes Mixtes", description="Assortiment de brochettes viande et légumes grillés", price=4.00, category=Category.GRILLADES, quantity_info="3 pièces", image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/l45rfnet_063935E9-A005-43EC-BEDA-73397F9F2F9C.png"),
-    MenuItem(id="15", name="Canard Sauté", description="Canard sauté aux épices, croustillant et savoureux", price=18.00, category=Category.GRILLADES),
+    MenuItem(id="15", name="Canard Sauté", description="Canard sauté aux épices, croustillant et savoureux", price=18.00, category=Category.GRILLADES, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/arcms8l5_647129DD-A1F8-49B3-9C7D-D0755FE34CF0.png"),
     
     # ============ PLATS PRINCIPAUX ============
     MenuItem(id="20", name="Pilao", description="Riz parfumé aux épices avec viande tendre, plat traditionnel comorien", price=8.50, category=Category.PLATS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/1aulv011_41F43494-C1AB-4649-99C8-216D875EB7F3.png"),
@@ -121,7 +121,7 @@ MENU_ITEMS = [
     MenuItem(id="30", name="Tilapia Frit", description="Tilapia entier frit, croustillant et savoureux", price=10.00, category=Category.POISSONS),
     MenuItem(id="31", name="Tilapia Sauce", description="Tilapia mijoté dans une sauce tomate aux épices africaines", price=10.00, category=Category.POISSONS),
     MenuItem(id="32", name="Pieuvre Sauce", description="Pieuvre tendre mijotée en sauce (verte ou rouge au choix)", price=7.50, category=Category.POISSONS),
-    MenuItem(id="33", name="Crevettes Panées", description="Crevettes panées croustillantes servies avec sauce", price=7.50, category=Category.POISSONS),
+    MenuItem(id="33", name="Crevettes Panées", description="Crevettes panées croustillantes servies avec sauce", price=7.50, category=Category.POISSONS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/75g3nvxc_041E140B-C4B6-478F-8C58-26504C5C056D.png"),
     
     # ============ ACCOMPAGNEMENTS ============
     MenuItem(id="40", name="Frites", description="Frites dorées et croustillantes", price=2.00, category=Category.ACCOMPAGNEMENTS),
