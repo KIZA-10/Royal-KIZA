@@ -37,10 +37,11 @@ class OrderStatus(str, Enum):
 class Category(str, Enum):
     ENTREES = "entrees"
     GRILLADES = "grillades"
+    PLATS = "plats"
+    POISSONS = "poissons"
+    ACCOMPAGNEMENTS = "accompagnements"
     DESSERTS = "desserts"
     BOISSONS = "boissons"
-    BURGERS = "burgers"
-    PLATS_SURPRISE = "plats_surprise"
 
 # Models
 class MenuItem(BaseModel):
@@ -89,54 +90,60 @@ class Order(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-# Menu Items Data
+# Menu Items Data - Updated with all KIZA products
 MENU_ITEMS = [
-    # Entrées
+    # ============ ENTRÉES ============
     MenuItem(id="1", name="Samoussa", description="Délicieux samoussas croustillants farcis aux légumes et épices", price=2.00, category=Category.ENTREES, quantity_info="3 pièces"),
-    MenuItem(id="2", name="Brochettes Viande", description="Brochettes de viande tendre marinée aux herbes", price=3.00, category=Category.ENTREES, quantity_info="3 pièces"),
-    MenuItem(id="3", name="Brochettes Mixtes", description="Assortiment de brochettes viande et légumes grillés", price=4.00, category=Category.ENTREES, quantity_info="3 pièces"),
-    MenuItem(id="4", name="Frites Barquettes", description="Frites dorées et croustillantes servies en barquette", price=2.00, category=Category.ENTREES),
-    MenuItem(id="5", name="Potatoes Barquettes", description="Potatoes assaisonnées aux herbes de Provence", price=3.50, category=Category.ENTREES),
-    MenuItem(id="6", name="Nems Poulet", description="Nems croustillants au poulet avec sauce aigre-douce", price=3.50, category=Category.ENTREES, quantity_info="4 pièces"),
-    MenuItem(id="7", name="Ailes de Poulet", description="Ailes de poulet épicées et croustillantes", price=5.00, category=Category.ENTREES, quantity_info="6 pièces"),
+    MenuItem(id="2", name="Beignets Goulagoula", description="Beignets africains traditionnels, moelleux et savoureux", price=4.50, category=Category.ENTREES),
+    MenuItem(id="3", name="Beignets Goulagoula Nutella", description="Beignets africains garnis de Nutella fondant", price=5.00, category=Category.ENTREES),
+    MenuItem(id="4", name="Kanguer", description="Spécialité comorienne croustillante et parfumée", price=5.00, category=Category.ENTREES),
+    MenuItem(id="5", name="Buns", description="Petits pains moelleux cuits à la vapeur", price=1.50, category=Category.ENTREES),
+    MenuItem(id="6", name="Mkatre", description="Pain traditionnel comorien cuit au charbon", price=3.50, category=Category.ENTREES),
+    MenuItem(id="7", name="Couscouma", description="Semoule de manioc parfumée aux épices", price=3.50, category=Category.ENTREES),
     
-    # Grillades
-    MenuItem(id="8", name="Côtes d'Agneau Sauté", description="Côtes d'agneau tendres sautées aux épices orientales", price=10.00, category=Category.GRILLADES),
-    MenuItem(id="9", name="Poulet Entier Grillé", description="Poulet fermier entier grillé aux herbes, juteux et savoureux", price=17.00, category=Category.GRILLADES),
-    MenuItem(id="10", name="Brochettes Viande Grillées", description="Brochettes de viande grillées au feu de bois", price=3.00, category=Category.GRILLADES, quantity_info="3 pièces"),
-    MenuItem(id="11", name="Brochettes Mixtes Grillées", description="Mix de brochettes viande et légumes grillées", price=4.00, category=Category.GRILLADES, quantity_info="3 pièces"),
-    MenuItem(id="12", name="Samoussa Grillé", description="Samoussas légèrement grillés pour plus de croustillant", price=2.50, category=Category.GRILLADES, quantity_info="3 pièces"),
-    MenuItem(id="13", name="Entrecôte Grillée", description="Entrecôte de bœuf grillée à point, tendre et savoureuse", price=14.00, category=Category.GRILLADES),
-    MenuItem(id="14", name="Côtelettes d'Agneau", description="Côtelettes d'agneau grillées, fondantes en bouche", price=12.00, category=Category.GRILLADES, quantity_info="4 pièces"),
+    # ============ GRILLADES ============
+    MenuItem(id="10", name="Poulet Entier Grillé", description="Poulet fermier entier grillé aux herbes, juteux et savoureux", price=17.00, category=Category.GRILLADES),
+    MenuItem(id="11", name="Cuisse de Poulet Grillé", description="Cuisse de poulet marinée et grillée à la perfection", price=7.00, category=Category.GRILLADES),
+    MenuItem(id="12", name="Côtelettes d'Agneau", description="Côtelettes d'agneau grillées, tendres et parfumées", price=12.00, category=Category.GRILLADES, quantity_info="4 pièces"),
+    MenuItem(id="13", name="Brochettes Viande", description="Brochettes de viande tendre marinée aux herbes", price=3.00, category=Category.GRILLADES, quantity_info="3 pièces"),
+    MenuItem(id="14", name="Brochettes Mixtes", description="Assortiment de brochettes viande et légumes grillés", price=4.00, category=Category.GRILLADES, quantity_info="3 pièces"),
+    MenuItem(id="15", name="Canard Sauté", description="Canard sauté aux épices, croustillant et savoureux", price=18.00, category=Category.GRILLADES),
     
-    # Burgers
-    MenuItem(id="15", name="Burger Royal KIZA", description="Notre signature: steak haché, cheddar, bacon, sauce royale, oignons caramélisés", price=9.50, category=Category.BURGERS),
-    MenuItem(id="16", name="Burger Classic", description="Steak haché, salade, tomate, oignons, sauce maison", price=7.00, category=Category.BURGERS),
-    MenuItem(id="17", name="Burger Chicken", description="Filet de poulet pané, salade, sauce caesar", price=8.00, category=Category.BURGERS),
-    MenuItem(id="18", name="Burger Double Cheese", description="Double steak, double cheddar, cornichons, sauce burger", price=11.00, category=Category.BURGERS),
-    MenuItem(id="19", name="Burger Végétarien", description="Steak végétal, avocat, tomate, roquette, sauce verte", price=8.50, category=Category.BURGERS),
+    # ============ PLATS PRINCIPAUX ============
+    MenuItem(id="20", name="Pilao", description="Riz parfumé aux épices avec viande tendre, plat traditionnel comorien", price=8.50, category=Category.PLATS),
+    MenuItem(id="21", name="Cuisse de Poulet Sauce", description="Cuisse de poulet mijotée dans une sauce onctueuse aux épices", price=7.00, category=Category.PLATS),
+    MenuItem(id="22", name="Pilons Sauce", description="Pilons de poulet en sauce savoureuse maison", price=5.00, category=Category.PLATS),
+    MenuItem(id="23", name="Canard Sauce", description="Canard mijoté dans une sauce riche et parfumée", price=16.00, category=Category.PLATS),
+    MenuItem(id="24", name="Gésier", description="Gésiers de volaille mijotés aux oignons et épices", price=5.50, category=Category.PLATS),
+    MenuItem(id="25", name="Poulet Pané", description="Morceaux de poulet panés, croustillants à l'extérieur, tendres à l'intérieur", price=3.50, category=Category.PLATS),
     
-    # Desserts
-    MenuItem(id="20", name="Tiramisu", description="Tiramisu maison crémeux au café et mascarpone", price=3.99, category=Category.DESSERTS),
-    MenuItem(id="21", name="Salade de Fruits", description="Salade de fruits frais de saison", price=4.00, category=Category.DESSERTS),
-    MenuItem(id="22", name="Fondant au Chocolat", description="Fondant au chocolat noir avec cœur coulant", price=4.50, category=Category.DESSERTS),
-    MenuItem(id="23", name="Crème Brûlée", description="Crème brûlée à la vanille de Madagascar", price=4.00, category=Category.DESSERTS),
-    MenuItem(id="24", name="Baklava", description="Pâtisserie orientale aux noix et miel", price=3.50, category=Category.DESSERTS, quantity_info="3 pièces"),
+    # ============ POISSONS & FRUITS DE MER ============
+    MenuItem(id="30", name="Tilapia Frit", description="Tilapia entier frit, croustillant et savoureux", price=10.00, category=Category.POISSONS),
+    MenuItem(id="31", name="Tilapia Sauce", description="Tilapia mijoté dans une sauce tomate aux épices africaines", price=10.00, category=Category.POISSONS),
+    MenuItem(id="32", name="Pieuvre Sauce", description="Pieuvre tendre mijotée en sauce (verte ou rouge au choix)", price=7.50, category=Category.POISSONS),
+    MenuItem(id="33", name="Crevettes Panées", description="Crevettes panées croustillantes servies avec sauce", price=7.50, category=Category.POISSONS),
     
-    # Boissons
-    MenuItem(id="25", name="Coca-Cola", description="Coca-Cola classique 33cl", price=2.00, category=Category.BOISSONS),
-    MenuItem(id="26", name="Fanta Orange", description="Fanta Orange pétillant 33cl", price=2.00, category=Category.BOISSONS),
-    MenuItem(id="27", name="Sprite", description="Sprite citron-lime 33cl", price=2.00, category=Category.BOISSONS),
-    MenuItem(id="28", name="Ice Tea Pêche", description="Thé glacé saveur pêche 33cl", price=2.50, category=Category.BOISSONS),
-    MenuItem(id="29", name="Jus d'Orange Frais", description="Jus d'orange fraîchement pressé", price=3.50, category=Category.BOISSONS),
-    MenuItem(id="30", name="Eau Minérale", description="Eau minérale naturelle 50cl", price=1.50, category=Category.BOISSONS),
-    MenuItem(id="31", name="Cocktail Tropical", description="Mélange de fruits exotiques sans alcool", price=4.00, category=Category.BOISSONS),
-    MenuItem(id="32", name="Milkshake Vanille", description="Milkshake onctueux à la vanille", price=4.50, category=Category.BOISSONS),
-    MenuItem(id="33", name="Milkshake Chocolat", description="Milkshake gourmand au chocolat", price=4.50, category=Category.BOISSONS),
+    # ============ ACCOMPAGNEMENTS ============
+    MenuItem(id="40", name="Frites", description="Frites dorées et croustillantes", price=2.00, category=Category.ACCOMPAGNEMENTS),
+    MenuItem(id="41", name="Potato's", description="Potatoes assaisonnées aux herbes", price=2.00, category=Category.ACCOMPAGNEMENTS),
+    MenuItem(id="42", name="Alloco", description="Bananes plantain frites, spécialité africaine sucrée-salée", price=3.50, category=Category.ACCOMPAGNEMENTS),
+    MenuItem(id="43", name="Banane Frit", description="Bananes douces frites caramélisées", price=3.50, category=Category.ACCOMPAGNEMENTS),
+    MenuItem(id="44", name="Manioc Frit", description="Bâtonnets de manioc frits, croustillants", price=3.50, category=Category.ACCOMPAGNEMENTS),
     
-    # Plats Surprise
-    MenuItem(id="34", name="Plat Surprise du Jour", description="Plat surprise avec patates, pâtes, sauces, pilao... Laissez-vous surprendre!", price=7.50, category=Category.PLATS_SURPRISE),
-    MenuItem(id="35", name="Menu Royal", description="Entrée + Plat + Dessert + Boisson au choix", price=15.00, category=Category.PLATS_SURPRISE),
+    # ============ DESSERTS ============
+    MenuItem(id="50", name="Crêpes Nutella", description="Crêpes fines garnies de Nutella fondant", price=3.50, category=Category.DESSERTS),
+    MenuItem(id="51", name="Gâteau Chocolat", description="Fondant au chocolat noir fait maison", price=7.50, category=Category.DESSERTS),
+    MenuItem(id="52", name="Tiramisu", description="Tiramisu maison crémeux au café et mascarpone", price=3.99, category=Category.DESSERTS),
+    MenuItem(id="53", name="Salade de Fruits", description="Salade de fruits frais de saison", price=4.00, category=Category.DESSERTS),
+    
+    # ============ BOISSONS ============
+    MenuItem(id="60", name="Boisson Foco", description="Boisson exotique aux fruits tropicaux", price=2.00, category=Category.BOISSONS),
+    MenuItem(id="61", name="Coca-Cola", description="Coca-Cola classique 33cl", price=2.00, category=Category.BOISSONS),
+    MenuItem(id="62", name="Fanta Orange", description="Fanta Orange pétillant 33cl", price=2.00, category=Category.BOISSONS),
+    MenuItem(id="63", name="Sprite", description="Sprite citron-lime 33cl", price=2.00, category=Category.BOISSONS),
+    MenuItem(id="64", name="Ice Tea Pêche", description="Thé glacé saveur pêche 33cl", price=2.50, category=Category.BOISSONS),
+    MenuItem(id="65", name="Jus d'Orange Frais", description="Jus d'orange fraîchement pressé", price=3.50, category=Category.BOISSONS),
+    MenuItem(id="66", name="Eau Minérale", description="Eau minérale naturelle 50cl", price=1.50, category=Category.BOISSONS),
 ]
 
 # Restaurant Info
@@ -157,10 +164,11 @@ RESTAURANT_INFO = {
     "categories": [
         {"id": "entrees", "name": "Entrées", "icon": "restaurant-menu"},
         {"id": "grillades", "name": "Grillades", "icon": "local-fire-department"},
-        {"id": "burgers", "name": "Burgers", "icon": "lunch-dining"},
+        {"id": "plats", "name": "Plats", "icon": "dinner-dining"},
+        {"id": "poissons", "name": "Poissons", "icon": "set-meal"},
+        {"id": "accompagnements", "name": "Accompagnements", "icon": "rice-bowl"},
         {"id": "desserts", "name": "Desserts", "icon": "cake"},
-        {"id": "boissons", "name": "Boissons", "icon": "local-cafe"},
-        {"id": "plats_surprise", "name": "Plats Surprise", "icon": "card-giftcard"}
+        {"id": "boissons", "name": "Boissons", "icon": "local-cafe"}
     ]
 }
 

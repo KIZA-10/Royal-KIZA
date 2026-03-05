@@ -114,10 +114,11 @@ const FOOD_IMAGES = {
 const CATEGORY_IMAGES: { [key: string]: string } = {
   entrees: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=300&h=200&fit=crop',
   grillades: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=300&h=200&fit=crop',
-  burgers: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&h=200&fit=crop',
+  plats: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=300&h=200&fit=crop',
+  poissons: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=300&h=200&fit=crop',
+  accompagnements: 'https://images.unsplash.com/photo-1529313780224-1a12b68bed16?w=300&h=200&fit=crop',
   desserts: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=300&h=200&fit=crop',
   boissons: 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=300&h=200&fit=crop',
-  plats_surprise: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=200&fit=crop',
 };
 
 // Menu Item Images based on category
@@ -125,18 +126,30 @@ const getMenuItemImage = (category: string, name: string): string => {
   const images: { [key: string]: string[] } = {
     entrees: [
       'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=300&h=200&fit=crop',
-      'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=300&h=200&fit=crop',
-      'https://images.unsplash.com/photo-1562967914-608f82629710?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=300&h=200&fit=crop',
     ],
     grillades: [
       'https://images.unsplash.com/photo-1544025162-d76694265947?w=300&h=200&fit=crop',
       'https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=300&h=200&fit=crop',
       'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=300&h=200&fit=crop',
     ],
-    burgers: [
-      'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&h=200&fit=crop',
-      'https://images.unsplash.com/photo-1550547660-d9450f859349?w=300&h=200&fit=crop',
-      'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=300&h=200&fit=crop',
+    plats: [
+      'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=300&h=200&fit=crop',
+    ],
+    poissons: [
+      'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1534080564583-6be75777b70a?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=300&h=200&fit=crop',
+    ],
+    accompagnements: [
+      'https://images.unsplash.com/photo-1529313780224-1a12b68bed16?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1518013431117-eb1465fa5752?w=300&h=200&fit=crop',
+      'https://images.unsplash.com/photo-1576107232684-1279f390859f?w=300&h=200&fit=crop',
     ],
     desserts: [
       'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=300&h=200&fit=crop',
@@ -147,10 +160,6 @@ const getMenuItemImage = (category: string, name: string): string => {
       'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=300&h=200&fit=crop',
       'https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?w=300&h=200&fit=crop',
       'https://images.unsplash.com/photo-1497534446932-c925b458314e?w=300&h=200&fit=crop',
-    ],
-    plats_surprise: [
-      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=200&fit=crop',
-      'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=300&h=200&fit=crop',
     ],
   };
   
@@ -455,11 +464,11 @@ export default function KizaRestaurant() {
                 <View style={styles.heroCategories}>
                   <Text style={styles.heroCategoryText}>GRILLADES</Text>
                   <View style={styles.heroDot} />
-                  <Text style={styles.heroCategoryText}>BURGERS</Text>
+                  <Text style={styles.heroCategoryText}>PLATS</Text>
+                  <View style={styles.heroDot} />
+                  <Text style={styles.heroCategoryText}>POISSONS</Text>
                   <View style={styles.heroDot} />
                   <Text style={styles.heroCategoryText}>DESSERTS</Text>
-                  <View style={styles.heroDot} />
-                  <Text style={styles.heroCategoryText}>BOISSONS</Text>
                 </View>
               </View>
             </View>
