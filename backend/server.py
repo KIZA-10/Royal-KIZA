@@ -62,6 +62,54 @@ class Category(str, Enum):
     DESSERTS = "desserts"
     BOISSONS = "boissons"
 
+class DriverStatus(str, Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    ON_DELIVERY = "on_delivery"
+
+# ============ DRIVER MODELS ============
+class Driver(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    username: str
+    password: str  # Will be hashed
+    full_name: str
+    phone: str
+    email: Optional[str] = None
+    status: DriverStatus = DriverStatus.ACTIVE
+    total_deliveries: int = 0
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    last_login: Optional[datetime] = None
+
+class DriverCreate(BaseModel):
+    username: str
+    password: str
+    full_name: str
+    phone: str
+    email: Optional[str] = None
+
+class DriverLogin(BaseModel):
+    username: str
+    password: str
+
+class DriverResponse(BaseModel):
+    id: str
+    username: str
+    full_name: str
+    phone: str
+    email: Optional[str]
+    status: DriverStatus
+    total_deliveries: int
+    created_at: datetime
+    last_login: Optional[datetime]
+
+# Simple password hashing (for production, use bcrypt)
+import hashlib
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password: str, hashed: str) -> bool:
+    return hash_password(password) == hashed
+
 # Models
 class MenuItem(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -335,6 +383,189 @@ async def get_order_by_number(order_number: str):
         raise HTTPException(status_code=404, detail="Order not found")
     order.pop('_id', None)
     return order
+
+# ============ DRIVER AUTHENTICATION ROUTES ============
+
+@api_router.post("/drivers/register", response_model=DriverResponse)
+async def register_driver(driver_data: DriverCreate):
+    """Register a new driver (Admin only in production)"""
+    # Check if username already exists
+    existing = await db.drivers.find_one({"username": driver_data.username})
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    
+    driver = Driver(
+        username=driver_data.username,
+        password=hash_password(driver_data.password),
+        full_name=driver_data.full_name,
+        phone=driver_data.phone,
+        email=driver_data.email
+    )
+    
+    driver_dict = driver.dict()
+    driver_dict['created_at'] = driver.created_at.isoformat()
+    await db.drivers.insert_one(driver_dict)
+    
+    # Return without password
+    return DriverResponse(**{k: v for k, v in driver_dict.items() if k != 'password' and k != '_id'})
+
+@api_router.post("/drivers/login")
+async def login_driver(login_data: DriverLogin):
+    """Driver login"""
+    driver = await db.drivers.find_one({"username": login_data.username})
+    if not driver:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if not verify_password(login_data.password, driver['password']):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if driver.get('status') == 'inactive':
+        raise HTTPException(status_code=403, detail="Account is inactive")
+    
+    # Update last login
+    await db.drivers.update_one(
+        {"id": driver['id']},
+        {"$set": {"last_login": datetime.utcnow().isoformat()}}
+    )
+    
+    driver.pop('_id', None)
+    driver.pop('password', None)
+    
+    return {"message": "Login successful", "driver": driver}
+
+@api_router.get("/drivers", response_model=List[DriverResponse])
+async def get_all_drivers():
+    """Get all drivers (Admin only)"""
+    drivers = await db.drivers.find({}).to_list(100)
+    result = []
+    for d in drivers:
+        d.pop('_id', None)
+        d.pop('password', None)
+        result.append(d)
+    return result
+
+@api_router.get("/drivers/{driver_id}")
+async def get_driver(driver_id: str):
+    """Get driver by ID"""
+    driver = await db.drivers.find_one({"id": driver_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    driver.pop('_id', None)
+    driver.pop('password', None)
+    return driver
+
+@api_router.put("/drivers/{driver_id}/status")
+async def update_driver_status(driver_id: str, status: DriverStatus):
+    """Update driver status"""
+    result = await db.drivers.update_one(
+        {"id": driver_id},
+        {"$set": {"status": status}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    return {"message": "Status updated", "status": status}
+
+@api_router.delete("/drivers/{driver_id}")
+async def delete_driver(driver_id: str):
+    """Delete a driver (Admin only)"""
+    result = await db.drivers.delete_one({"id": driver_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    return {"message": "Driver deleted"}
+
+# ============ DRIVER ORDER MANAGEMENT ============
+
+@api_router.get("/drivers/{driver_id}/orders")
+async def get_driver_orders(driver_id: str):
+    """Get orders assigned to a specific driver"""
+    orders = await db.orders.find({
+        "assigned_driver_id": driver_id,
+        "status": {"$in": ["confirmed", "preparing", "delivering"]}
+    }).sort("created_at", -1).to_list(50)
+    for order in orders:
+        order.pop('_id', None)
+    return orders
+
+@api_router.get("/drivers/{driver_id}/history")
+async def get_driver_delivery_history(driver_id: str):
+    """Get completed deliveries for a driver"""
+    orders = await db.orders.find({
+        "assigned_driver_id": driver_id,
+        "status": "delivered"
+    }).sort("updated_at", -1).to_list(100)
+    for order in orders:
+        order.pop('_id', None)
+    return orders
+
+@api_router.put("/orders/{order_id}/assign/{driver_id}")
+async def assign_order_to_driver(order_id: str, driver_id: str):
+    """Assign an order to a driver"""
+    # Verify driver exists
+    driver = await db.drivers.find_one({"id": driver_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    result = await db.orders.update_one(
+        {"id": order_id},
+        {"$set": {
+            "assigned_driver_id": driver_id,
+            "assigned_driver_name": driver['full_name'],
+            "updated_at": datetime.utcnow().isoformat()
+        }}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"message": "Order assigned", "driver_id": driver_id}
+
+@api_router.put("/orders/{order_id}/deliver")
+async def mark_order_delivered(order_id: str, driver_id: str):
+    """Mark order as delivered and update driver stats"""
+    # Update order
+    result = await db.orders.update_one(
+        {"id": order_id, "assigned_driver_id": driver_id},
+        {"$set": {
+            "status": "delivered",
+            "delivered_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat()
+        }}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found or not assigned to this driver")
+    
+    # Update driver stats
+    await db.drivers.update_one(
+        {"id": driver_id},
+        {"$inc": {"total_deliveries": 1}}
+    )
+    
+    return {"message": "Order marked as delivered"}
+
+@api_router.get("/drivers/{driver_id}/stats")
+async def get_driver_stats(driver_id: str):
+    """Get driver statistics"""
+    driver = await db.drivers.find_one({"id": driver_id})
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    # Count deliveries today
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_deliveries = await db.orders.count_documents({
+        "assigned_driver_id": driver_id,
+        "status": "delivered",
+        "delivered_at": {"$gte": today_start.isoformat()}
+    })
+    
+    # Count pending deliveries
+    pending = await db.orders.count_documents({
+        "assigned_driver_id": driver_id,
+        "status": {"$in": ["confirmed", "preparing", "delivering"]}
+    })
+    
+    return {
+        "total_deliveries": driver.get('total_deliveries', 0),
+        "today_deliveries": today_deliveries,
+        "pending_deliveries": pending
+    }
 
 # ============ STRIPE PAYMENT ROUTES ============
 
