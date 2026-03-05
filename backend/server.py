@@ -98,8 +98,8 @@ MENU_ITEMS = [
     MenuItem(id="3", name="Beignets Goulagoula Nutella", description="Beignets africains garnis de Nutella fondant", price=5.00, category=Category.ENTREES),
     MenuItem(id="4", name="Kanguer", description="Spécialité comorienne croustillante et parfumée", price=5.00, category=Category.ENTREES, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/xkq5wt1m_DF481B61-8A56-43F6-BF06-6C13E88D543E.png"),
     MenuItem(id="5", name="Buns", description="Petits pains moelleux cuits à la vapeur", price=1.50, category=Category.ENTREES, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/bxvjzh7y_63BA2155-87C1-4738-B3AD-2B5F729565B4.png"),
-    MenuItem(id="6", name="Mkatre", description="Pain traditionnel comorien cuit au charbon", price=3.50, category=Category.ENTREES),
-    MenuItem(id="7", name="Couscouma", description="Semoule de manioc parfumée aux épices", price=3.50, category=Category.ENTREES),
+    MenuItem(id="6", name="Mkatre", description="Pain traditionnel comorien cuit au charbon", price=3.50, category=Category.ENTREES, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/zyxaod0i_FF3CD703-38BC-4415-9AEF-FD02DC56C18E.png"),
+    MenuItem(id="7", name="Couscouma", description="Semoule de manioc parfumée aux épices", price=3.50, category=Category.ENTREES, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/dk73yid1_D71DC8BA-8A0F-4EA6-B014-FDCF14217DCF.png"),
     
     # ============ GRILLADES ============
     MenuItem(id="10", name="Poulet Entier Grillé", description="Poulet fermier entier grillé aux herbes, juteux et savoureux", price=17.00, category=Category.GRILLADES),
@@ -118,15 +118,15 @@ MENU_ITEMS = [
     MenuItem(id="25", name="Poulet Pané", description="Morceaux de poulet panés, croustillants à l'extérieur, tendres à l'intérieur", price=3.50, category=Category.PLATS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/qiee0fj5_49F1B479-F443-4F6C-941D-4CC472088783.png"),
     
     # ============ POISSONS & FRUITS DE MER ============
-    MenuItem(id="30", name="Tilapia Frit", description="Tilapia entier frit, croustillant et savoureux", price=10.00, category=Category.POISSONS),
-    MenuItem(id="31", name="Tilapia Sauce", description="Tilapia mijoté dans une sauce tomate aux épices africaines", price=10.00, category=Category.POISSONS),
+    MenuItem(id="30", name="Tilapia Frit", description="Tilapia entier frit, croustillant et savoureux", price=10.00, category=Category.POISSONS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/3s2ehb93_C9F82EEF-7EFE-468D-998E-4795B087B3D7.png"),
+    MenuItem(id="31", name="Tilapia Sauce", description="Tilapia mijoté dans une sauce tomate aux épices africaines", price=10.00, category=Category.POISSONS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/b9h24ya8_36946C4A-225A-4689-BD3E-E79E30364908.png"),
     MenuItem(id="32", name="Pieuvre Sauce", description="Pieuvre tendre mijotée en sauce (verte ou rouge au choix)", price=7.50, category=Category.POISSONS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/64dqs3sb_4E96D6F7-5B1E-4DFE-BDD6-C829043BCD8E.png"),
     MenuItem(id="33", name="Crevettes Panées", description="Crevettes panées croustillantes servies avec sauce", price=7.50, category=Category.POISSONS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/75g3nvxc_041E140B-C4B6-478F-8C58-26504C5C056D.png"),
     
     # ============ ACCOMPAGNEMENTS ============
     MenuItem(id="40", name="Frites", description="Frites dorées et croustillantes", price=2.00, category=Category.ACCOMPAGNEMENTS),
     MenuItem(id="41", name="Potato's", description="Potatoes assaisonnées aux herbes", price=2.00, category=Category.ACCOMPAGNEMENTS),
-    MenuItem(id="42", name="Alloco", description="Bananes plantain frites, spécialité africaine sucrée-salée", price=3.50, category=Category.ACCOMPAGNEMENTS),
+    MenuItem(id="42", name="Alloco", description="Bananes plantain frites, spécialité africaine sucrée-salée", price=3.50, category=Category.ACCOMPAGNEMENTS, image_url="https://customer-assets.emergentagent.com/job_dev-preview-223/artifacts/s1r3ph1y_87FE5DBD-A1BF-4480-9B05-F7B8854EDA56.png"),
     MenuItem(id="43", name="Banane Frit", description="Bananes douces frites caramélisées", price=3.50, category=Category.ACCOMPAGNEMENTS),
     MenuItem(id="44", name="Manioc Frit", description="Bâtonnets de manioc frits, croustillants", price=3.50, category=Category.ACCOMPAGNEMENTS),
     
