@@ -190,7 +190,7 @@ export default function KizaRestaurant() {
   const [chatMessages, setChatMessages] = useState<Array<{role: string, content: string}>>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'stripe'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'stripe'>('stripe');
   const [reviews, setReviews] = useState<any[]>([]);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewRating, setReviewRating] = useState(5);
@@ -321,26 +321,22 @@ export default function KizaRestaurant() {
         delivery_address: deliveryAddress,
         total_amount: getCartTotal(),
         delivery_fee: getDeliveryFee(),
-        payment_method: paymentMethod === 'cash' ? 'cash_on_delivery' : 'stripe',
+        payment_method: 'stripe',
       };
 
       const response = await api.post('/orders', orderData);
       
-      if (paymentMethod === 'stripe') {
-        // Create Stripe checkout session
-        const paymentRes = await api.post('/payments/create-checkout', {
-          order_id: response.data.id,
-          origin_url: API_BASE_URL,
-        });
-        // Open Stripe checkout
-        Linking.openURL(paymentRes.data.checkout_url);
-        setOrderNumber(response.data.order_number);
-      } else {
-        setOrderNumber(response.data.order_number);
-        setCart([]);
-        await AsyncStorage.removeItem('kiza_cart');
-        setCurrentScreen('order_success');
-      }
+      // Create Stripe checkout session
+      const paymentRes = await api.post('/payments/create-checkout', {
+        order_id: response.data.id,
+        origin_url: API_BASE_URL,
+      });
+      // Open Stripe checkout
+      Linking.openURL(paymentRes.data.checkout_url);
+      setOrderNumber(response.data.order_number);
+      // Clear cart after redirecting to Stripe
+      setCart([]);
+      await AsyncStorage.removeItem('kiza_cart');
     } catch (error) {
       console.error('Error placing order:', error);
       Alert.alert('Erreur', 'Impossible de passer la commande. Veuillez réessayer.');
@@ -913,8 +909,8 @@ export default function KizaRestaurant() {
 
           {/* Payment Info */}
           <View style={styles.paymentInfo}>
-            <MaterialIcons name="local-atm" size={24} color={COLORS.gold} />
-            <Text style={styles.paymentText}>Paiement à la livraison</Text>
+            <MaterialIcons name="credit-card" size={24} color={COLORS.gold} />
+            <Text style={styles.paymentText}>Paiement en ligne sécurisé</Text>
           </View>
 
           {/* Checkout Button */}
@@ -1053,59 +1049,22 @@ export default function KizaRestaurant() {
           </View>
         </View>
 
-        {/* Payment Method Selection */}
+        {/* Payment Method - Stripe Only */}
         <View style={styles.paymentMethodSection}>
           <Text style={styles.paymentMethodSectionTitle}>Mode de paiement</Text>
           
-          <TouchableOpacity
-            style={[
-              styles.paymentMethodOption,
-              paymentMethod === 'cash' && styles.paymentMethodOptionActive
-            ]}
-            onPress={() => setPaymentMethod('cash')}
-          >
+          <View style={[styles.paymentMethodOption, styles.paymentMethodOptionActive]}>
             <View style={styles.paymentMethodOptionLeft}>
-              <MaterialIcons name="local-atm" size={28} color={paymentMethod === 'cash' ? COLORS.gold : COLORS.gray} />
+              <MaterialIcons name="credit-card" size={28} color={COLORS.gold} />
               <View style={styles.paymentMethodOptionInfo}>
-                <Text style={[
-                  styles.paymentMethodOptionTitle,
-                  paymentMethod === 'cash' && styles.paymentMethodOptionTitleActive
-                ]}>Paiement à la livraison</Text>
-                <Text style={styles.paymentMethodOptionDesc}>Payez en espèces ou par carte au livreur</Text>
+                <Text style={[styles.paymentMethodOptionTitle, styles.paymentMethodOptionTitleActive]}>Paiement en ligne sécurisé</Text>
+                <Text style={styles.paymentMethodOptionDesc}>Paiement par carte bancaire via Stripe</Text>
               </View>
             </View>
-            <View style={[
-              styles.paymentMethodRadio,
-              paymentMethod === 'cash' && styles.paymentMethodRadioActive
-            ]}>
-              {paymentMethod === 'cash' && <View style={styles.paymentMethodRadioInner} />}
+            <View style={styles.paymentMethodSecureIcon}>
+              <Ionicons name="shield-checkmark" size={24} color={COLORS.gold} />
             </View>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[
-              styles.paymentMethodOption,
-              paymentMethod === 'stripe' && styles.paymentMethodOptionActive
-            ]}
-            onPress={() => setPaymentMethod('stripe')}
-          >
-            <View style={styles.paymentMethodOptionLeft}>
-              <MaterialIcons name="credit-card" size={28} color={paymentMethod === 'stripe' ? COLORS.gold : COLORS.gray} />
-              <View style={styles.paymentMethodOptionInfo}>
-                <Text style={[
-                  styles.paymentMethodOptionTitle,
-                  paymentMethod === 'stripe' && styles.paymentMethodOptionTitleActive
-                ]}>Payer en ligne</Text>
-                <Text style={styles.paymentMethodOptionDesc}>Paiement sécurisé par carte bancaire</Text>
-              </View>
-            </View>
-            <View style={[
-              styles.paymentMethodRadio,
-              paymentMethod === 'stripe' && styles.paymentMethodRadioActive
-            ]}>
-              {paymentMethod === 'stripe' && <View style={styles.paymentMethodRadioInner} />}
-            </View>
-          </TouchableOpacity>
+          </View>
         </View>
 
         {/* Place Order Button */}
@@ -1292,9 +1251,9 @@ export default function KizaRestaurant() {
         </Text>
         
         <View style={styles.successPaymentContainer}>
-          <MaterialIcons name="local-atm" size={24} color={COLORS.gold} />
+          <Ionicons name="shield-checkmark" size={24} color={COLORS.gold} />
           <Text style={styles.successPayment}>
-            Paiement à la livraison - Espèces ou Carte
+            Paiement sécurisé par carte bancaire
           </Text>
         </View>
         
@@ -3000,6 +2959,9 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     backgroundColor: COLORS.gold,
+  },
+  paymentMethodSecureIcon: {
+    marginLeft: 10,
   },
   
   // Floating Chat Button Styles
