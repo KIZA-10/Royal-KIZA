@@ -22,6 +22,7 @@ import { Ionicons, MaterialIcons, FontAwesome5, MaterialCommunityIcons } from '@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Constants from 'expo-constants';
+import { router } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 
@@ -499,10 +500,10 @@ export default function KizaRestaurant() {
       
       <TouchableOpacity 
         style={styles.navItem}
-        onPress={() => openSocialMedia('phone')}
+        onPress={() => router.push('/delivery')}
       >
         <MaterialIcons name="delivery-dining" size={22} color={COLORS.gray} />
-        <Text style={styles.navText}>Livraison</Text>
+        <Text style={styles.navText}>Livreur</Text>
       </TouchableOpacity>
     </View>
   );

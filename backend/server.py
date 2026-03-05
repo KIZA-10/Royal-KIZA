@@ -308,6 +308,18 @@ async def create_order(order_data: OrderCreate):
     
     return order
 
+# Get all orders for delivery panel - MUST be before /{order_id}
+@api_router.get("/orders/delivery")
+async def get_delivery_orders():
+    """Get orders for delivery drivers"""
+    orders = await db.orders.find({
+        "status": {"$in": ["confirmed", "preparing", "delivering"]}
+    }).sort("created_at", -1).to_list(100)
+    # Remove MongoDB _id field
+    for order in orders:
+        order.pop('_id', None)
+    return orders
+
 @api_router.get("/orders/{order_id}")
 async def get_order(order_id: str):
     order = await db.orders.find_one({"id": order_id})
@@ -513,6 +525,193 @@ async def chat_with_bot(chat_message: ChatMessage):
 
 # Include the router in the main app
 app.include_router(api_router)
+
+# Navigation page for QR code (Waze + Google Maps)
+from fastapi.responses import HTMLResponse
+import urllib.parse
+
+@app.get("/navigate/{order_id}", response_class=HTMLResponse)
+async def navigation_page(order_id: str):
+    """Page that shows navigation options when QR code is scanned"""
+    # Get order from database
+    order = await db.orders.find_one({"id": order_id})
+    if not order:
+        return HTMLResponse(content="""
+        <html>
+        <head><meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>body{font-family:Arial;background:#1a1a1a;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+        .error{text-align:center;padding:20px}</style></head>
+        <body><div class="error"><h2>Commande non trouvée</h2></div></body>
+        </html>
+        """, status_code=404)
+    
+    # Build address string
+    addr = order.get('delivery_address', {})
+    full_address = f"{addr.get('address', '')}, {addr.get('postal_code', '')} {addr.get('city', '')}, France"
+    encoded_address = urllib.parse.quote(full_address)
+    
+    # Waze deep link
+    waze_url = f"https://waze.com/ul?q={encoded_address}&navigate=yes"
+    
+    # Google Maps URL
+    gmaps_url = f"https://www.google.com/maps/search/?api=1&query={encoded_address}"
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Navigation - KIZA</title>
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{
+                font-family: 'Segoe UI', Arial, sans-serif;
+                background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+                min-height: 100vh;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                padding: 20px;
+            }}
+            .container {{
+                background: rgba(30, 30, 30, 0.95);
+                border-radius: 24px;
+                padding: 32px 24px;
+                max-width: 400px;
+                width: 100%;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+                border: 1px solid rgba(212, 175, 55, 0.3);
+            }}
+            .logo {{
+                text-align: center;
+                margin-bottom: 24px;
+            }}
+            .logo h1 {{
+                color: #D4AF37;
+                font-size: 32px;
+                letter-spacing: 8px;
+            }}
+            .logo span {{
+                color: #888;
+                font-size: 12px;
+                letter-spacing: 4px;
+            }}
+            .order-info {{
+                background: rgba(212, 175, 55, 0.1);
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 24px;
+            }}
+            .order-info h3 {{
+                color: #D4AF37;
+                font-size: 14px;
+                margin-bottom: 8px;
+            }}
+            .order-info p {{
+                color: #fff;
+                font-size: 14px;
+                line-height: 1.5;
+            }}
+            .customer {{
+                color: #D4AF37 !important;
+                font-weight: bold;
+                font-size: 16px !important;
+            }}
+            .nav-title {{
+                color: #fff;
+                text-align: center;
+                margin-bottom: 20px;
+                font-size: 18px;
+            }}
+            .nav-btn {{
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 18px 24px;
+                border-radius: 16px;
+                text-decoration: none;
+                font-size: 18px;
+                font-weight: bold;
+                margin-bottom: 16px;
+                transition: transform 0.2s, box-shadow 0.2s;
+            }}
+            .nav-btn:hover {{
+                transform: translateY(-2px);
+                box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            }}
+            .nav-btn:active {{
+                transform: scale(0.98);
+            }}
+            .waze {{
+                background: linear-gradient(135deg, #33CCFF 0%, #00A5E0 100%);
+                color: #fff;
+            }}
+            .gmaps {{
+                background: linear-gradient(135deg, #4285F4 0%, #34A853 50%, #EA4335 100%);
+                color: #fff;
+            }}
+            .nav-btn svg {{
+                width: 28px;
+                height: 28px;
+                margin-right: 12px;
+            }}
+            .footer {{
+                text-align: center;
+                margin-top: 20px;
+                color: #666;
+                font-size: 12px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="logo">
+                <h1>KIZA</h1>
+                <span>RESTAURANT</span>
+            </div>
+            
+            <div class="order-info">
+                <h3>📍 Adresse de livraison</h3>
+                <p class="customer">{addr.get('full_name', 'Client')}</p>
+                <p>{addr.get('address', '')}</p>
+                <p>{addr.get('postal_code', '')} {addr.get('city', '')}</p>
+                <p>📞 {addr.get('phone', '')}</p>
+            </div>
+            
+            <p class="nav-title">Choisissez votre application GPS</p>
+            
+            <a href="{waze_url}" class="nav-btn waze">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                </svg>
+                Ouvrir avec Waze
+            </a>
+            
+            <a href="{gmaps_url}" class="nav-btn gmaps">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                </svg>
+                Ouvrir avec Google Maps
+            </a>
+            
+            <p class="footer">Bonne livraison ! 🚗</p>
+        </div>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
+
+# Update order status
+@api_router.put("/orders/{order_id}/status")
+async def update_order_status(order_id: str, status: OrderStatus):
+    """Update order status"""
+    result = await db.orders.update_one(
+        {"id": order_id},
+        {"$set": {"status": status, "updated_at": datetime.utcnow().isoformat()}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"message": "Status updated", "status": status}
 
 app.add_middleware(
     CORSMiddleware,
