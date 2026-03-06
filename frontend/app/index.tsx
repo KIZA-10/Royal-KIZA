@@ -22,6 +22,7 @@ import { Ionicons, MaterialIcons, FontAwesome5, MaterialCommunityIcons } from '@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Constants from 'expo-constants';
+import { router } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 
@@ -1224,6 +1225,14 @@ export default function KizaRestaurant() {
           </View>
         </LinearGradient>
       </View>
+
+      {/* Admin Link (discreet) */}
+      <TouchableOpacity
+        style={styles.adminLink}
+        onPress={() => router.push('/admin')}
+      >
+        <Text style={styles.adminLinkText}>Administration</Text>
+      </TouchableOpacity>
 
       <View style={styles.bottomSpacing} />
     </ScrollView>
@@ -3214,5 +3223,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.black,
     marginLeft: 10,
+  },
+  
+  // Admin Link
+  adminLink: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    marginTop: 10,
+  },
+  adminLinkText: {
+    fontSize: 12,
+    color: COLORS.gray,
+    textDecorationLine: 'underline',
   },
 });
