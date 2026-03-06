@@ -7,12 +7,11 @@
     "icon": "./assets/icon.png",
     "scheme": "kiza-livreur",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.kiza.livreur",
       "infoPlist": {
-        "NSCameraUsageDescription": "Scanner les QR codes des commandes à livrer"
+        "NSCameraUsageDescription": "Scanner les QR codes des commandes"
       }
     },
     "android": {
@@ -32,15 +31,15 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Scanner les QR codes des commandes à livrer"
+          "cameraPermission": "Scanner les QR codes"
         }
       ]
     ],
-    "experiments": {
-      "typedRoutes": true
-    },
     "extra": {
-      "EXPO_PUBLIC_BACKEND_URL": ""
-    }
+      "eas": {
+        "projectId": "de955451-d77a-4842-bb64-6b890b782fc3"
+      }
+    },
+    "owner": "royalekiza"
   }
 }
