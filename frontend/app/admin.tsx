@@ -233,10 +233,29 @@ export default function AdminScreen() {
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color={COLORS.gold} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Gestion Livreurs</Text>
+          <Text style={styles.headerTitle}>Administration</Text>
           <TouchableOpacity onPress={() => setShowAddModal(true)}>
             <Ionicons name="add-circle" size={28} color={COLORS.gold} />
           </TouchableOpacity>
+        </View>
+
+        {/* Navigation Tabs */}
+        <View style={styles.adminNav}>
+          <TouchableOpacity
+            style={styles.adminNavButton}
+            onPress={() => router.push('/orders-management')}
+          >
+            <LinearGradient colors={[COLORS.warning, '#E65100']} style={styles.adminNavGradient}>
+              <Ionicons name="receipt" size={24} color="#fff" />
+              <Text style={styles.adminNavText}>Commandes</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <View style={[styles.adminNavButton, styles.adminNavButtonActive]}>
+            <LinearGradient colors={[COLORS.gold, COLORS.goldDark]} style={styles.adminNavGradient}>
+              <Ionicons name="people" size={24} color={COLORS.black} />
+              <Text style={[styles.adminNavText, { color: COLORS.black }]}>Livreurs</Text>
+            </LinearGradient>
+          </View>
         </View>
 
         {/* Stats */}
@@ -495,4 +514,11 @@ const styles = StyleSheet.create({
   submitButton: { borderRadius: 12, overflow: 'hidden', marginTop: 8 },
   submitGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16 },
   submitText: { fontSize: 16, fontWeight: 'bold', color: COLORS.black, marginLeft: 8 },
+
+  // Admin Navigation
+  adminNav: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 12 },
+  adminNavButton: { flex: 1, marginHorizontal: 4, borderRadius: 12, overflow: 'hidden' },
+  adminNavButtonActive: {},
+  adminNavGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14 },
+  adminNavText: { fontSize: 15, fontWeight: '600', color: '#fff', marginLeft: 8 },
 });

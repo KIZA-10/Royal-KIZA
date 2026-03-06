@@ -368,6 +368,15 @@ async def get_delivery_orders():
         order.pop('_id', None)
     return orders
 
+# Get all orders for management panel - MUST be before /{order_id}
+@api_router.get("/orders/all")
+async def get_all_orders():
+    """Get all orders for management"""
+    orders = await db.orders.find({}).sort("created_at", -1).to_list(500)
+    for order in orders:
+        order.pop('_id', None)
+    return orders
+
 @api_router.get("/orders/{order_id}")
 async def get_order(order_id: str):
     order = await db.orders.find_one({"id": order_id})
