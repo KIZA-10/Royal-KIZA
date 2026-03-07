@@ -441,6 +441,9 @@ export default function KizaRestaurant() {
         <FontAwesome5 name="crown" size={18} color={COLORS.gold} />
         <Text style={styles.logoText}>KIZA</Text>
       </TouchableOpacity>
+      <View style={styles.halalBadge}>
+        <Text style={styles.halalText}>100% HALAL</Text>
+      </View>
       <View style={styles.headerRight}>
         <TouchableOpacity 
           style={styles.cartButton} 
@@ -1639,6 +1642,20 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  halalBadge: {
+    backgroundColor: '#2E7D32',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  halalText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: 'bold',
+    letterSpacing: 1,
   },
   cartButton: {
     padding: 8,
