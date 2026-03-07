@@ -82,13 +82,14 @@ interface Settings {
 }
 
 interface MenuItem {
-  id: string;
+  id?: string;
+  item_id?: string;
   name: string;
-  description: string;
-  price: number;
+  description?: string;
+  price?: number;
   category: string;
   image_url?: string;
-  is_bestseller: boolean;
+  is_bestseller?: boolean;
   in_stock: boolean;
 }
 
@@ -198,13 +199,19 @@ export default function SettingsManagementScreen() {
 
   // Stock functions
   const toggleStock = async (item: MenuItem) => {
+    const itemId = item.item_id || item.id;
+    if (!itemId) {
+      Alert.alert('Erreur', 'ID du produit manquant');
+      return;
+    }
     const newStock = !item.in_stock;
     try {
-      await api.put(`/api/menu/${item.id}/stock`, { in_stock: newStock });
+      await api.put(`/api/menu/${itemId}/stock`, { in_stock: newStock });
       setStockItems(prev => 
-        prev.map(i => i.id === item.id ? { ...i, in_stock: newStock } : i)
+        prev.map(i => (i.item_id || i.id) === itemId ? { ...i, in_stock: newStock } : i)
       );
     } catch (error) {
+      console.error('Stock update error:', error);
       Alert.alert('Erreur', 'Impossible de modifier le stock');
     }
   };
@@ -656,7 +663,7 @@ export default function SettingsManagementScreen() {
 
                 {/* Stock Items List */}
                 {filteredStockItems.map((item) => (
-                  <View key={item.id} style={styles.stockCard}>
+                  <View key={item.item_id || item.id} style={styles.stockCard}>
                     <View style={styles.stockInfo}>
                       <Text style={styles.stockName}>{item.name}</Text>
                       <Text style={styles.stockCategory}>{getStockCategoryName(item.category)}</Text>
