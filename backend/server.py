@@ -119,6 +119,7 @@ class MenuItem(BaseModel):
     category: Category
     image_url: Optional[str] = None
     available: bool = True
+    in_stock: bool = True  # For stock management
     quantity_info: Optional[str] = None
     is_bestseller: bool = False
 
@@ -260,6 +261,17 @@ RESTAURANT_INFO = {
     "delivery_radius_km": 30,
     "delivery_fee": 3.00,
     "free_delivery_minimum": 25.00,
+    "opening_hours": {
+        "default": {
+            "open": "09:00",
+            "close": "23:50"
+        },
+        "ramadan": {
+            "enabled": False,
+            "open": "18:00",
+            "close": "02:00"
+        }
+    },
     "social_media": {
         "snapchat": "Zakma2020",
         "instagram": "KIZA",

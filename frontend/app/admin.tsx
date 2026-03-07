@@ -216,8 +216,6 @@ export default function AdminScreen() {
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-
-            <Text style={styles.hint}>Mot de passe: kiza2024admin</Text>
           </View>
         </LinearGradient>
       </SafeAreaView>
