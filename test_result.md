@@ -189,6 +189,54 @@ backend:
           agent: "testing"
           comment: "API root endpoint GET /api/ tested successfully. Returns welcome message and confirms API is accessible."
 
+  - task: "Settings API - Get Settings"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint GET /api/settings tested successfully. Returns restaurant settings with correct default values: opening_hour (09:00), closing_hour (23:50), is_ramadan_mode (false), ramadan_opening_hour (18:00), ramadan_closing_hour (02:00), is_open (true). All field types validated correctly."
+
+  - task: "Settings API - Update Settings"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint PUT /api/settings tested successfully. Updates restaurant settings correctly with test data: opening_hour to 10:00, closing_hour to 22:00, is_ramadan_mode to true. Returns proper response with success message and updated settings object. MongoDB persistence working correctly."
+
+  - task: "Stock Management API - Get All Stock"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"  
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint GET /api/menu/stock tested successfully after fixing route order conflict. Returns complete stock status for all 42 menu items with proper structure: item_id, name, category, in_stock fields. Fixed routing issue where /menu/stock was conflicting with /menu/{item_id} by reordering routes in server.py."
+
+  - task: "Stock Management API - Update Item Stock"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint PUT /api/menu/{item_id}/stock tested successfully. Updates stock status for Samoussa (item_id: 1) to out of stock (in_stock: false). Returns proper response with success message, item_id, and updated stock status. Stock persistence verified through subsequent GET /api/menu/stock calls."
+
 frontend:
 
 metadata:
@@ -198,12 +246,7 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "Restaurant Info API"
-    - "Menu API"
-    - "Menu Category Filtering - Grillades"
-    - "Menu Category Filtering - Burgers"
-    - "Order Creation API"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -211,3 +254,7 @@ test_plan:
 agent_communication:
     - agent: "testing"
       message: "All backend API endpoints tested successfully. Created comprehensive backend_test.py file and executed full test suite. All 7 tests passed including restaurant info retrieval, menu operations, category filtering, and order management. Backend is fully functional and ready for production use. MongoDB integration working correctly for order persistence."
+    - agent: "main"
+      message: "Added new Settings and Stock Management APIs. Please test: GET /api/settings, PUT /api/settings, GET /api/menu/stock, PUT /api/menu/{item_id}/stock. Also created settings-management.tsx frontend page with UI for managing business hours (including Ramadan mode) and stock status."
+    - agent: "testing"
+      message: "Completed testing of new Settings and Stock Management APIs. All 4 new endpoints working correctly: GET /api/settings returns default values, PUT /api/settings updates successfully, GET /api/menu/stock returns all item stock status, PUT /api/menu/{item_id}/stock updates individual items. Fixed route order conflict where /menu/stock was being intercepted by /menu/{item_id} route. All 5 comprehensive tests passed including persistence verification. Backend APIs fully functional."

@@ -192,6 +192,26 @@ class PaymentRequest(BaseModel):
     order_id: str
     origin_url: str
 
+# Settings Models
+class RestaurantSettings(BaseModel):
+    opening_hour: str = "09:00"
+    closing_hour: str = "23:50"
+    is_ramadan_mode: bool = False
+    ramadan_opening_hour: str = "18:00"
+    ramadan_closing_hour: str = "02:00"
+    is_open: bool = True
+
+class SettingsUpdate(BaseModel):
+    opening_hour: Optional[str] = None
+    closing_hour: Optional[str] = None
+    is_ramadan_mode: Optional[bool] = None
+    ramadan_opening_hour: Optional[str] = None
+    ramadan_closing_hour: Optional[str] = None
+    is_open: Optional[bool] = None
+
+class StockUpdate(BaseModel):
+    in_stock: bool
+
 # Menu Items Data - Updated with all KIZA products
 MENU_ITEMS = [
     # ============ ENTRÉES ============
@@ -337,6 +357,25 @@ async def get_bestsellers():
 @api_router.get("/menu/category/{category}", response_model=List[MenuItem])
 async def get_menu_by_category(category: Category):
     return [item for item in MENU_ITEMS if item.category == category]
+
+# Stock route must come before {item_id} route to avoid conflicts
+@api_router.get("/menu/stock")
+async def get_all_stock_status():
+    """Get stock status for all menu items"""
+    stock_statuses = await db.menu_stock.find({}).to_list(100)
+    stock_dict = {s['item_id']: s['in_stock'] for s in stock_statuses}
+    
+    result = []
+    for item in MENU_ITEMS:
+        in_stock = stock_dict.get(item.id, item.in_stock)
+        result.append({
+            "item_id": item.id,
+            "name": item.name,
+            "category": item.category,
+            "in_stock": in_stock
+        })
+    
+    return result
 
 @api_router.get("/menu/{item_id}", response_model=MenuItem)
 async def get_menu_item(item_id: str):
@@ -774,6 +813,88 @@ async def chat_with_bot(chat_message: ChatMessage):
     except Exception as e:
         logger.error(f"Chatbot error: {e}")
         return ChatResponse(response="Désolé, je rencontre un problème technique. Veuillez nous contacter directement au 0751420492.")
+
+# ============ SETTINGS ROUTES ============
+
+@api_router.get("/settings")
+async def get_settings():
+    """Get restaurant settings"""
+    settings = await db.settings.find_one({"_id": "restaurant_settings"})
+    if not settings:
+        # Create default settings if not exists
+        default_settings = {
+            "_id": "restaurant_settings",
+            "opening_hour": "09:00",
+            "closing_hour": "23:50",
+            "is_ramadan_mode": False,
+            "ramadan_opening_hour": "18:00",
+            "ramadan_closing_hour": "02:00",
+            "is_open": True
+        }
+        await db.settings.insert_one(default_settings)
+        settings = default_settings
+    
+    settings.pop('_id', None)
+    return settings
+
+@api_router.put("/settings")
+async def update_settings(settings_update: SettingsUpdate):
+    """Update restaurant settings"""
+    update_data = {k: v for k, v in settings_update.dict().items() if v is not None}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    
+    # Check if settings exist
+    existing = await db.settings.find_one({"_id": "restaurant_settings"})
+    if not existing:
+        # Create with defaults + updates
+        default_settings = {
+            "_id": "restaurant_settings",
+            "opening_hour": "09:00",
+            "closing_hour": "23:50",
+            "is_ramadan_mode": False,
+            "ramadan_opening_hour": "18:00",
+            "ramadan_closing_hour": "02:00",
+            "is_open": True
+        }
+        default_settings.update(update_data)
+        await db.settings.insert_one(default_settings)
+    else:
+        await db.settings.update_one(
+            {"_id": "restaurant_settings"},
+            {"$set": update_data}
+        )
+    
+    # Return updated settings
+    settings = await db.settings.find_one({"_id": "restaurant_settings"})
+    settings.pop('_id', None)
+    return {"message": "Settings updated", "settings": settings}
+
+# ============ STOCK MANAGEMENT ROUTES ============
+
+@api_router.put("/menu/{item_id}/stock")
+async def update_item_stock(item_id: str, stock_update: StockUpdate):
+    """Update menu item stock status"""
+    # Find the item in MENU_ITEMS
+    item_found = False
+    for item in MENU_ITEMS:
+        if item.id == item_id:
+            item.in_stock = stock_update.in_stock
+            item_found = True
+            break
+    
+    if not item_found:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+    
+    # Also store in database for persistence
+    await db.menu_stock.update_one(
+        {"item_id": item_id},
+        {"$set": {"in_stock": stock_update.in_stock, "updated_at": datetime.utcnow().isoformat()}},
+        upsert=True
+    )
+    
+    return {"message": "Stock updated", "item_id": item_id, "in_stock": stock_update.in_stock}
 
 # Include the router in the main app
 app.include_router(api_router)

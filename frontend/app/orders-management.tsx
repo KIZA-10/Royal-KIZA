@@ -543,6 +543,34 @@ export default function OrdersManagementScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Admin Navigation */}
+        <View style={styles.adminNav}>
+          <View style={[styles.adminNavButton, styles.adminNavButtonActive]}>
+            <LinearGradient colors={['#FF9800', '#E65100']} style={styles.adminNavGradient}>
+              <Ionicons name="receipt" size={18} color="#fff" />
+              <Text style={[styles.adminNavText, { color: '#fff' }]}>Commandes</Text>
+            </LinearGradient>
+          </View>
+          <TouchableOpacity
+            style={styles.adminNavButton}
+            onPress={() => router.push('/admin')}
+          >
+            <View style={styles.adminNavInactive}>
+              <Ionicons name="people" size={18} color={COLORS.gold} />
+              <Text style={styles.adminNavText}>Livreurs</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.adminNavButton}
+            onPress={() => router.push('/settings-management')}
+          >
+            <View style={styles.adminNavInactive}>
+              <Ionicons name="settings" size={18} color={COLORS.gold} />
+              <Text style={styles.adminNavText}>Paramètres</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
         {/* Stats Row */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsScroll}>
           <View style={styles.statsRow}>
@@ -622,6 +650,14 @@ const styles = StyleSheet.create({
   // Header
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(212, 175, 55, 0.2)' },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.gold },
+
+  // Admin Navigation
+  adminNav: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8 },
+  adminNavButton: { flex: 1, marginHorizontal: 3, borderRadius: 10, overflow: 'hidden' },
+  adminNavButtonActive: {},
+  adminNavGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10 },
+  adminNavInactive: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, backgroundColor: COLORS.blackMedium, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.2)' },
+  adminNavText: { fontSize: 12, fontWeight: '600', color: COLORS.gold, marginLeft: 6 },
 
   // Stats
   statsScroll: { maxHeight: 80 },

@@ -1,346 +1,308 @@
 #!/usr/bin/env python3
 """
-KIZA Restaurant API Backend Testing
-Tests all backend functionality for the KIZA Restaurant API
+Backend API Testing Suite for KIZA Restaurant
+Tests Settings and Stock Management APIs
 """
 
 import requests
 import json
-import sys
-from datetime import datetime
+from typing import Dict, Any, List
 
-# Get backend URL from frontend .env
-BACKEND_URL = "https://dev-preview-223.preview.emergentagent.com/api"
+# Backend URL from frontend environment
+BACKEND_BASE_URL = "https://dev-preview-223.preview.emergentagent.com"
+API_BASE_URL = f"{BACKEND_BASE_URL}/api"
 
-def test_restaurant_info():
-    """Test GET /api/restaurant-info endpoint"""
-    print("\n=== Testing Restaurant Info Endpoint ===")
+def print_test_header(test_name: str):
+    print(f"\n{'='*60}")
+    print(f"Testing: {test_name}")
+    print(f"{'='*60}")
+
+def print_response(response: requests.Response):
+    print(f"Status Code: {response.status_code}")
+    print(f"Response Headers: {dict(response.headers)}")
+    try:
+        response_data = response.json()
+        print(f"Response Body: {json.dumps(response_data, indent=2)}")
+        return response_data
+    except json.JSONDecodeError:
+        print(f"Response Text: {response.text}")
+        return response.text
+
+def test_get_settings():
+    """Test GET /api/settings - Should return restaurant settings with defaults"""
+    print_test_header("GET /api/settings - Get Restaurant Settings")
     
     try:
-        response = requests.get(f"{BACKEND_URL}/restaurant-info")
-        print(f"Status Code: {response.status_code}")
+        response = requests.get(f"{API_BASE_URL}/settings", timeout=10)
+        response_data = print_response(response)
         
         if response.status_code == 200:
-            data = response.json()
-            print("✅ Restaurant info retrieved successfully")
-            print(f"Restaurant Name: {data.get('name')}")
-            print(f"Phone: {data.get('phone')}")
-            print(f"Email: {data.get('email')}")
-            print(f"Address: {data.get('address')}")
-            
-            # Check for required fields
-            required_fields = ['name', 'phone', 'email', 'address', 'social_media']
-            missing_fields = [field for field in required_fields if field not in data]
-            
-            if missing_fields:
-                print(f"❌ Missing required fields: {missing_fields}")
-                return False
-            
-            # Check social media
-            social_media = data.get('social_media', {})
-            if not social_media:
-                print("❌ Social media information missing")
-                return False
-            
-            print(f"Social Media: {social_media}")
-            return True
-        else:
-            print(f"❌ Failed to get restaurant info. Status: {response.status_code}")
-            print(f"Response: {response.text}")
-            return False
-            
-    except Exception as e:
-        print(f"❌ Error testing restaurant info: {str(e)}")
-        return False
-
-def test_menu():
-    """Test GET /api/menu endpoint"""
-    print("\n=== Testing Menu Endpoint ===")
-    
-    try:
-        response = requests.get(f"{BACKEND_URL}/menu")
-        print(f"Status Code: {response.status_code}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            print(f"✅ Menu retrieved successfully - {len(data)} items")
-            
-            # Check if we have menu items
-            if not data:
-                print("❌ No menu items returned")
-                return False
-            
-            # Sample first item structure
-            first_item = data[0]
-            print(f"Sample item: {first_item.get('name')} - ${first_item.get('price')}")
-            
-            # Check required fields in first item
-            required_fields = ['id', 'name', 'description', 'price', 'category']
-            missing_fields = [field for field in required_fields if field not in first_item]
-            
-            if missing_fields:
-                print(f"❌ Missing required fields in menu item: {missing_fields}")
-                return False
-            
-            return True
-        else:
-            print(f"❌ Failed to get menu. Status: {response.status_code}")
-            print(f"Response: {response.text}")
-            return False
-            
-    except Exception as e:
-        print(f"❌ Error testing menu: {str(e)}")
-        return False
-
-def test_menu_category_grillades():
-    """Test GET /api/menu/category/grillades endpoint"""
-    print("\n=== Testing Grillades Category Endpoint ===")
-    
-    try:
-        response = requests.get(f"{BACKEND_URL}/menu/category/grillades")
-        print(f"Status Code: {response.status_code}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            print(f"✅ Grillades menu retrieved successfully - {len(data)} items")
-            
-            if not data:
-                print("❌ No grillades items returned")
-                return False
-            
-            # Verify all items are grillades
-            non_grillades = [item for item in data if item.get('category') != 'grillades']
-            if non_grillades:
-                print(f"❌ Found non-grillades items: {[item.get('name') for item in non_grillades]}")
-                return False
-            
-            # Show sample items
-            for item in data[:3]:
-                print(f"  - {item.get('name')}: {item.get('description')[:50]}...")
-            
-            return True
-        else:
-            print(f"❌ Failed to get grillades menu. Status: {response.status_code}")
-            print(f"Response: {response.text}")
-            return False
-            
-    except Exception as e:
-        print(f"❌ Error testing grillades menu: {str(e)}")
-        return False
-
-def test_menu_category_burgers():
-    """Test GET /api/menu/category/burgers endpoint"""
-    print("\n=== Testing Burgers Category Endpoint ===")
-    
-    try:
-        response = requests.get(f"{BACKEND_URL}/menu/category/burgers")
-        print(f"Status Code: {response.status_code}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            print(f"✅ Burgers menu retrieved successfully - {len(data)} items")
-            
-            if not data:
-                print("❌ No burger items returned")
-                return False
-            
-            # Verify all items are burgers
-            non_burgers = [item for item in data if item.get('category') != 'burgers']
-            if non_burgers:
-                print(f"❌ Found non-burger items: {[item.get('name') for item in non_burgers]}")
-                return False
-            
-            # Show sample items
-            for item in data[:3]:
-                print(f"  - {item.get('name')}: ${item.get('price')}")
-            
-            return True
-        else:
-            print(f"❌ Failed to get burgers menu. Status: {response.status_code}")
-            print(f"Response: {response.text}")
-            return False
-            
-    except Exception as e:
-        print(f"❌ Error testing burgers menu: {str(e)}")
-        return False
-
-def test_create_order():
-    """Test POST /api/orders endpoint"""
-    print("\n=== Testing Create Order Endpoint ===")
-    
-    # Test order data as specified in the review request
-    order_data = {
-        "items": [
-            {
-                "menu_item_id": "1",
-                "name": "Samoussa",
-                "price": 2.00,
-                "quantity": 3
+            # Validate expected fields with default values
+            expected_fields = {
+                'opening_hour': '09:00',
+                'closing_hour': '23:50',
+                'is_ramadan_mode': False,
+                'ramadan_opening_hour': '18:00',
+                'ramadan_closing_hour': '02:00',
+                'is_open': True
             }
-        ],
-        "delivery_address": {
-            "full_name": "Jean Dupont",
-            "phone": "0612345678", 
-            "address": "10 Rue de Paris",
-            "city": "Paris",
-            "postal_code": "75001"
-        },
-        "total_amount": 6.00,
-        "delivery_fee": 3.00
-    }
-    
-    try:
-        response = requests.post(
-            f"{BACKEND_URL}/orders",
-            json=order_data,
-            headers={"Content-Type": "application/json"}
-        )
-        print(f"Status Code: {response.status_code}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            print("✅ Order created successfully")
-            print(f"Order ID: {data.get('id')}")
-            print(f"Order Number: {data.get('order_number')}")
-            print(f"Grand Total: ${data.get('grand_total')}")
-            print(f"Status: {data.get('status')}")
             
-            # Verify order data
-            if data.get('total_amount') != 6.00:
-                print(f"❌ Incorrect total amount: expected 6.00, got {data.get('total_amount')}")
-                return False, None
+            success = True
+            for field, default_value in expected_fields.items():
+                if field in response_data:
+                    print(f"✓ {field}: {response_data[field]} (expected type: {type(default_value)})")
+                    if type(response_data[field]) != type(default_value):
+                        print(f"✗ {field} has wrong type: {type(response_data[field])} instead of {type(default_value)}")
+                        success = False
+                else:
+                    print(f"✗ Missing field: {field}")
+                    success = False
             
-            if data.get('delivery_fee') != 3.00:
-                print(f"❌ Incorrect delivery fee: expected 3.00, got {data.get('delivery_fee')}")
-                return False, None
-            
-            if data.get('grand_total') != 9.00:
-                print(f"❌ Incorrect grand total: expected 9.00, got {data.get('grand_total')}")
-                return False, None
-            
-            # Verify customer info
-            delivery_addr = data.get('delivery_address', {})
-            if delivery_addr.get('full_name') != "Jean Dupont":
-                print(f"❌ Incorrect customer name: {delivery_addr.get('full_name')}")
-                return False, None
-            
-            # Verify items
-            items = data.get('items', [])
-            if not items:
-                print("❌ No items in created order")
-                return False, None
-            
-            first_item = items[0]
-            if first_item.get('name') != "Samoussa" or first_item.get('quantity') != 3:
-                print(f"❌ Incorrect item data: {first_item}")
-                return False, None
-            
-            print("✅ Order data validation passed")
-            return True, data.get('id')
-            
+            if success:
+                print("✅ GET /api/settings - SUCCESS")
+                return True, response_data
+            else:
+                print("❌ GET /api/settings - FAILED: Missing or invalid fields")
+                return False, response_data
         else:
-            print(f"❌ Failed to create order. Status: {response.status_code}")
-            print(f"Response: {response.text}")
+            print(f"❌ GET /api/settings - FAILED: Status {response.status_code}")
             return False, None
             
     except Exception as e:
-        print(f"❌ Error testing order creation: {str(e)}")
+        print(f"❌ GET /api/settings - ERROR: {e}")
         return False, None
 
-def test_get_order(order_id):
-    """Test GET /api/orders/{order_id} endpoint"""
-    print(f"\n=== Testing Get Order Endpoint ===")
+def test_update_settings():
+    """Test PUT /api/settings - Update restaurant settings"""
+    print_test_header("PUT /api/settings - Update Restaurant Settings")
     
-    if not order_id:
-        print("❌ No order ID provided for testing")
-        return False
-    
-    try:
-        response = requests.get(f"{BACKEND_URL}/orders/{order_id}")
-        print(f"Status Code: {response.status_code}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            print("✅ Order retrieved successfully")
-            print(f"Order ID: {data.get('id')}")
-            print(f"Customer: {data.get('delivery_address', {}).get('full_name')}")
-            print(f"Status: {data.get('status')}")
-            return True
-        else:
-            print(f"❌ Failed to get order. Status: {response.status_code}")
-            print(f"Response: {response.text}")
-            return False
-            
-    except Exception as e:
-        print(f"❌ Error testing get order: {str(e)}")
-        return False
-
-def test_api_root():
-    """Test GET /api/ endpoint"""
-    print("\n=== Testing API Root Endpoint ===")
-    
-    try:
-        response = requests.get(f"{BACKEND_URL}/")
-        print(f"Status Code: {response.status_code}")
-        
-        if response.status_code == 200:
-            data = response.json()
-            print("✅ API root accessible")
-            print(f"Message: {data.get('message')}")
-            return True
-        else:
-            print(f"❌ Failed to access API root. Status: {response.status_code}")
-            return False
-            
-    except Exception as e:
-        print(f"❌ Error testing API root: {str(e)}")
-        return False
-
-def run_all_tests():
-    """Run all backend tests and return results"""
-    print("🚀 Starting KIZA Restaurant API Backend Tests")
-    print(f"Backend URL: {BACKEND_URL}")
-    print("=" * 60)
-    
-    results = {
-        "api_root": test_api_root(),
-        "restaurant_info": test_restaurant_info(),
-        "menu": test_menu(),
-        "menu_grillades": test_menu_category_grillades(),
-        "menu_burgers": test_menu_category_burgers(),
+    # Test data matching the review request
+    test_data = {
+        "opening_hour": "10:00",
+        "closing_hour": "22:00", 
+        "is_ramadan_mode": True
     }
     
-    # Test order creation and retrieval
-    order_success, order_id = test_create_order()
-    results["create_order"] = order_success
+    try:
+        response = requests.put(
+            f"{API_BASE_URL}/settings",
+            json=test_data,
+            headers={'Content-Type': 'application/json'},
+            timeout=10
+        )
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            # Validate response structure
+            if isinstance(response_data, dict) and 'message' in response_data and 'settings' in response_data:
+                updated_settings = response_data['settings']
+                
+                # Verify updates were applied
+                success = True
+                for field, expected_value in test_data.items():
+                    if field in updated_settings and updated_settings[field] == expected_value:
+                        print(f"✓ {field} updated to: {updated_settings[field]}")
+                    else:
+                        print(f"✗ {field} not updated correctly: expected {expected_value}, got {updated_settings.get(field)}")
+                        success = False
+                
+                if success:
+                    print("✅ PUT /api/settings - SUCCESS")
+                    return True, updated_settings
+                else:
+                    print("❌ PUT /api/settings - FAILED: Updates not applied correctly")
+                    return False, updated_settings
+            else:
+                print("❌ PUT /api/settings - FAILED: Invalid response structure")
+                return False, response_data
+        else:
+            print(f"❌ PUT /api/settings - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ PUT /api/settings - ERROR: {e}")
+        return False, None
+
+def test_get_stock_status():
+    """Test GET /api/menu/stock - Get stock status for all menu items"""
+    print_test_header("GET /api/menu/stock - Get All Stock Status")
     
-    if order_success and order_id:
-        results["get_order"] = test_get_order(order_id)
-    else:
-        results["get_order"] = False
-        print("\n❌ Skipping get order test - order creation failed")
+    try:
+        response = requests.get(f"{API_BASE_URL}/menu/stock", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, list) and len(response_data) > 0:
+                # Validate structure of first few items
+                sample_items = response_data[:3]
+                success = True
+                
+                for i, item in enumerate(sample_items):
+                    print(f"\nValidating item {i+1}: {item.get('name', 'Unknown')}")
+                    
+                    required_fields = ['item_id', 'name', 'category', 'in_stock']
+                    for field in required_fields:
+                        if field in item:
+                            print(f"  ✓ {field}: {item[field]} ({type(item[field])})")
+                        else:
+                            print(f"  ✗ Missing field: {field}")
+                            success = False
+                
+                print(f"\nTotal items returned: {len(response_data)}")
+                
+                if success:
+                    print("✅ GET /api/menu/stock - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ GET /api/menu/stock - FAILED: Invalid item structure")
+                    return False, response_data
+            else:
+                print("❌ GET /api/menu/stock - FAILED: No stock items returned")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/menu/stock - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/menu/stock - ERROR: {e}")
+        return False, None
+
+def test_update_item_stock():
+    """Test PUT /api/menu/{item_id}/stock - Update stock status for specific item"""
+    print_test_header("PUT /api/menu/1/stock - Update Samoussa Stock Status")
+    
+    # Test with item_id "1" (Samoussa) as specified in review request
+    item_id = "1"
+    test_data = {"in_stock": False}
+    
+    try:
+        response = requests.put(
+            f"{API_BASE_URL}/menu/{item_id}/stock",
+            json=test_data,
+            headers={'Content-Type': 'application/json'},
+            timeout=10
+        )
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            # Validate response structure
+            if isinstance(response_data, dict):
+                expected_fields = ['message', 'item_id', 'in_stock']
+                success = True
+                
+                for field in expected_fields:
+                    if field in response_data:
+                        print(f"✓ {field}: {response_data[field]}")
+                        if field == 'item_id' and response_data[field] != item_id:
+                            print(f"✗ item_id mismatch: expected {item_id}, got {response_data[field]}")
+                            success = False
+                        elif field == 'in_stock' and response_data[field] != test_data['in_stock']:
+                            print(f"✗ in_stock mismatch: expected {test_data['in_stock']}, got {response_data[field]}")
+                            success = False
+                    else:
+                        print(f"✗ Missing field: {field}")
+                        success = False
+                
+                if success:
+                    print("✅ PUT /api/menu/1/stock - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ PUT /api/menu/1/stock - FAILED: Invalid response")
+                    return False, response_data
+            else:
+                print("❌ PUT /api/menu/1/stock - FAILED: Invalid response format")
+                return False, response_data
+        else:
+            print(f"❌ PUT /api/menu/1/stock - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ PUT /api/menu/1/stock - ERROR: {e}")
+        return False, None
+
+def verify_stock_update():
+    """Verify that the stock update was persisted by checking GET /api/menu/stock"""
+    print_test_header("Verification: Check Samoussa Stock Status After Update")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/menu/stock", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200 and isinstance(response_data, list):
+            # Find Samoussa (item_id "1")
+            samoussa_item = None
+            for item in response_data:
+                if item.get('item_id') == '1':
+                    samoussa_item = item
+                    break
+            
+            if samoussa_item:
+                print(f"Found Samoussa: {samoussa_item}")
+                if samoussa_item.get('in_stock') == False:
+                    print("✅ Stock Update Verification - SUCCESS: Samoussa is marked as out of stock")
+                    return True, samoussa_item
+                else:
+                    print(f"❌ Stock Update Verification - FAILED: Samoussa stock status is {samoussa_item.get('in_stock')}, expected False")
+                    return False, samoussa_item
+            else:
+                print("❌ Stock Update Verification - FAILED: Samoussa not found in stock list")
+                return False, None
+        else:
+            print("❌ Stock Update Verification - FAILED: Could not retrieve stock status")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ Stock Update Verification - ERROR: {e}")
+        return False, None
+
+def run_all_tests():
+    """Run all Settings and Stock Management API tests"""
+    print("🍽️  KIZA Restaurant - Settings & Stock Management API Tests")
+    print("=" * 70)
+    
+    all_results = {}
+    
+    # Test 1: Get Settings
+    success, data = test_get_settings()
+    all_results['get_settings'] = success
+    
+    # Test 2: Update Settings  
+    success, data = test_update_settings()
+    all_results['update_settings'] = success
+    
+    # Test 3: Get Stock Status
+    success, data = test_get_stock_status()
+    all_results['get_stock'] = success
+    
+    # Test 4: Update Item Stock
+    success, data = test_update_item_stock()
+    all_results['update_stock'] = success
+    
+    # Test 5: Verify Stock Update
+    success, data = verify_stock_update()
+    all_results['verify_stock'] = success
     
     # Summary
-    print("\n" + "=" * 60)
-    print("🏁 TEST RESULTS SUMMARY")
-    print("=" * 60)
+    print(f"\n{'='*60}")
+    print("FINAL TEST RESULTS SUMMARY")
+    print(f"{'='*60}")
     
-    passed = sum(1 for result in results.values() if result)
-    total = len(results)
+    total_tests = len(all_results)
+    passed_tests = sum(1 for result in all_results.values() if result)
     
-    for test_name, result in results.items():
+    for test_name, result in all_results.items():
         status = "✅ PASS" if result else "❌ FAIL"
         print(f"{test_name.upper().replace('_', ' ')}: {status}")
     
-    print(f"\nOverall: {passed}/{total} tests passed")
+    print(f"\nTests Passed: {passed_tests}/{total_tests}")
     
-    if passed == total:
-        print("🎉 All tests passed! Backend is working correctly.")
+    if passed_tests == total_tests:
+        print("🎉 ALL TESTS PASSED! Settings & Stock Management APIs are working correctly.")
         return True
     else:
-        print("⚠️  Some tests failed. Please check the issues above.")
+        print(f"⚠️  {total_tests - passed_tests} test(s) failed. Check the detailed output above.")
         return False
 
 if __name__ == "__main__":
     success = run_all_tests()
-    sys.exit(0 if success else 1)
+    exit(0 if success else 1)
