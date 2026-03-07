@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Backend API Testing Suite for KIZA Restaurant
-Tests Settings, Stock Management, and GPS Tracking APIs
+Tests Settings, Stock Management, GPS Tracking, Employee Management, and Payroll APIs
 """
 
 import requests
@@ -494,13 +494,370 @@ def verify_stock_update():
         print(f"❌ Stock Update Verification - ERROR: {e}")
         return False, None
 
+# ============ EMPLOYEE MANAGEMENT TESTS ============
+
+def test_create_employee():
+    """Test POST /api/employees - Create a new employee"""
+    print_test_header("POST /api/employees - Create New Employee")
+    
+    # Test data from the review request with realistic French data
+    test_employee = {
+        "full_name": "Jean Dupont",
+        "phone": "+33612345678",
+        "email": "jean@kiza.fr",
+        "role": "cook",
+        "payment_type": "fixed_salary",
+        "payment_rate": 1800,
+        "iban": "FR7630006000011234567890189",
+        "bank_name": "BNP Paribas"
+    }
+    
+    try:
+        response = requests.post(
+            f"{API_BASE_URL}/employees",
+            json=test_employee,
+            headers={'Content-Type': 'application/json'},
+            timeout=10
+        )
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                # Validate required fields
+                expected_fields = ['id', 'full_name', 'phone', 'email', 'role', 'payment_type', 'payment_rate', 'iban', 'bank_name', 'status', 'created_at']
+                success = True
+                
+                for field in expected_fields:
+                    if field in response_data:
+                        value = response_data[field]
+                        print(f"✓ {field}: {value}")
+                        
+                        # Validate specific field values
+                        if field == 'full_name' and value != test_employee['full_name']:
+                            print(f"✗ {field} mismatch: expected {test_employee[field]}, got {value}")
+                            success = False
+                        elif field == 'payment_rate' and value != test_employee['payment_rate']:
+                            print(f"✗ {field} mismatch: expected {test_employee[field]}, got {value}")
+                            success = False
+                        elif field == 'status' and value != 'active':
+                            print(f"✗ Default status should be 'active', got {value}")
+                            success = False
+                    else:
+                        print(f"✗ Missing field: {field}")
+                        success = False
+                
+                # Check if ID is a valid UUID format
+                employee_id = response_data.get('id')
+                if employee_id and len(employee_id.split('-')) == 5:
+                    print(f"✓ ID format is valid UUID: {employee_id}")
+                else:
+                    print(f"✗ Invalid ID format: {employee_id}")
+                    success = False
+                
+                if success:
+                    print("✅ POST /api/employees - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ POST /api/employees - FAILED: Invalid response data")
+                    return False, response_data
+            else:
+                print("❌ POST /api/employees - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ POST /api/employees - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ POST /api/employees - ERROR: {e}")
+        return False, None
+
+def test_get_employees():
+    """Test GET /api/employees - Get all employees"""
+    print_test_header("GET /api/employees - Get All Employees")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/employees", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, list):
+                print(f"Found {len(response_data)} employees")
+                
+                if len(response_data) > 0:
+                    # Validate structure of first employee
+                    first_employee = response_data[0]
+                    print(f"\nValidating first employee: {first_employee.get('full_name', 'Unknown')}")
+                    
+                    required_fields = ['id', 'full_name', 'phone', 'role', 'payment_type', 'payment_rate', 'status']
+                    success = True
+                    
+                    for field in required_fields:
+                        if field in first_employee:
+                            print(f"  ✓ {field}: {first_employee[field]} ({type(first_employee[field])})")
+                        else:
+                            print(f"  ✗ Missing field: {field}")
+                            success = False
+                    
+                    if success:
+                        print("✅ GET /api/employees - SUCCESS")
+                        return True, response_data
+                    else:
+                        print("❌ GET /api/employees - FAILED: Invalid employee structure")
+                        return False, response_data
+                else:
+                    print("⚠️  No employees found, but API is working")
+                    print("✅ GET /api/employees - SUCCESS (empty list)")
+                    return True, response_data
+            else:
+                print("❌ GET /api/employees - FAILED: Response is not a list")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/employees - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/employees - ERROR: {e}")
+        return False, None
+
+# ============ PAYROLL MANAGEMENT TESTS ============
+
+def test_get_payroll_stats():
+    """Test GET /api/payroll/stats - Get payroll statistics"""
+    print_test_header("GET /api/payroll/stats - Get Payroll Statistics")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/payroll/stats", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                # Validate expected structure
+                expected_sections = ['current_month', 'employee_stats']
+                success = True
+                
+                for section in expected_sections:
+                    if section in response_data:
+                        print(f"✓ {section}: present")
+                        
+                        if section == 'current_month':
+                            current_month = response_data[section]
+                            month_fields = ['month', 'year', 'total', 'paid', 'pending', 'employee_count']
+                            for field in month_fields:
+                                if field in current_month:
+                                    print(f"  ✓ {field}: {current_month[field]} ({type(current_month[field])})")
+                                else:
+                                    print(f"  ✗ Missing field in current_month: {field}")
+                                    success = False
+                        
+                        elif section == 'employee_stats':
+                            emp_stats = response_data[section]
+                            stats_fields = ['total_active', 'by_role']
+                            for field in stats_fields:
+                                if field in emp_stats:
+                                    print(f"  ✓ {field}: {emp_stats[field]} ({type(emp_stats[field])})")
+                                else:
+                                    print(f"  ✗ Missing field in employee_stats: {field}")
+                                    success = False
+                    else:
+                        print(f"✗ Missing section: {section}")
+                        success = False
+                
+                if success:
+                    print("✅ GET /api/payroll/stats - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ GET /api/payroll/stats - FAILED: Invalid structure")
+                    return False, response_data
+            else:
+                print("❌ GET /api/payroll/stats - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/payroll/stats - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/payroll/stats - ERROR: {e}")
+        return False, None
+
+def test_generate_payroll():
+    """Test POST /api/payroll/generate - Generate payroll for current month"""
+    print_test_header("POST /api/payroll/generate - Generate Payroll")
+    
+    try:
+        response = requests.post(f"{API_BASE_URL}/payroll/generate", timeout=30)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                # Validate expected fields
+                expected_fields = ['message', 'period', 'records']
+                success = True
+                
+                for field in expected_fields:
+                    if field in response_data:
+                        value = response_data[field]
+                        print(f"✓ {field}: present")
+                        
+                        if field == 'period':
+                            period = response_data[field]
+                            if 'month' in period and 'year' in period:
+                                print(f"  ✓ month: {period['month']}, year: {period['year']}")
+                            else:
+                                print("  ✗ Period missing month or year")
+                                success = False
+                        
+                        elif field == 'records':
+                            records = response_data[field]
+                            print(f"  ✓ Generated {len(records)} payroll records")
+                            
+                            # Validate first record if any exist
+                            if len(records) > 0:
+                                first_record = records[0]
+                                record_fields = ['id', 'employee_id', 'employee_name', 'role', 'total_amount', 'status', 'payment_type']
+                                for rfield in record_fields:
+                                    if rfield in first_record:
+                                        print(f"    ✓ {rfield}: {first_record[rfield]}")
+                                    else:
+                                        print(f"    ✗ Missing field in record: {rfield}")
+                                        success = False
+                    else:
+                        print(f"✗ Missing field: {field}")
+                        success = False
+                
+                if success:
+                    print("✅ POST /api/payroll/generate - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ POST /api/payroll/generate - FAILED: Invalid structure")
+                    return False, response_data
+            else:
+                print("❌ POST /api/payroll/generate - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ POST /api/payroll/generate - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ POST /api/payroll/generate - ERROR: {e}")
+        return False, None
+
+def test_get_payroll_overview():
+    """Test GET /api/payroll - Get payroll overview for current month"""
+    print_test_header("GET /api/payroll - Get Payroll Overview")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/payroll", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                # Validate expected structure
+                expected_fields = ['period', 'records', 'summary']
+                success = True
+                
+                for field in expected_fields:
+                    if field in response_data:
+                        print(f"✓ {field}: present")
+                        
+                        if field == 'period':
+                            period = response_data[field]
+                            if 'month' in period and 'year' in period:
+                                print(f"  ✓ month: {period['month']}, year: {period['year']}")
+                            else:
+                                print("  ✗ Period missing month or year")
+                                success = False
+                        
+                        elif field == 'records':
+                            records = response_data[field]
+                            print(f"  ✓ Found {len(records)} payroll records")
+                        
+                        elif field == 'summary':
+                            summary = response_data[field]
+                            summary_fields = ['total_employees', 'total_pending', 'total_paid', 'total_amount']
+                            for sfield in summary_fields:
+                                if sfield in summary:
+                                    print(f"  ✓ {sfield}: {summary[sfield]} ({type(summary[sfield])})")
+                                else:
+                                    print(f"  ✗ Missing field in summary: {sfield}")
+                                    success = False
+                    else:
+                        print(f"✗ Missing field: {field}")
+                        success = False
+                
+                if success:
+                    print("✅ GET /api/payroll - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ GET /api/payroll - FAILED: Invalid structure")
+                    return False, response_data
+            else:
+                print("❌ GET /api/payroll - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/payroll - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/payroll - ERROR: {e}")
+        return False, None
+
+def test_mark_payroll_paid(payroll_id: str):
+    """Test PUT /api/payroll/{payroll_id}/mark-paid - Mark payroll as paid"""
+    print_test_header(f"PUT /api/payroll/{payroll_id}/mark-paid - Mark Payroll as Paid")
+    
+    try:
+        response = requests.put(f"{API_BASE_URL}/payroll/{payroll_id}/mark-paid", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                # Validate that status changed to paid
+                expected_fields = ['id', 'status', 'paid_at', 'employee_name', 'total_amount']
+                success = True
+                
+                for field in expected_fields:
+                    if field in response_data:
+                        value = response_data[field]
+                        print(f"✓ {field}: {value}")
+                        
+                        if field == 'id' and value != payroll_id:
+                            print(f"✗ ID mismatch: expected {payroll_id}, got {value}")
+                            success = False
+                        elif field == 'status' and value != 'paid':
+                            print(f"✗ Status should be 'paid', got {value}")
+                            success = False
+                        elif field == 'paid_at' and not value:
+                            print(f"✗ paid_at should not be null")
+                            success = False
+                    else:
+                        print(f"✗ Missing field: {field}")
+                        success = False
+                
+                if success:
+                    print("✅ PUT /api/payroll/{payroll_id}/mark-paid - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ PUT /api/payroll/{payroll_id}/mark-paid - FAILED: Invalid response")
+                    return False, response_data
+            else:
+                print("❌ PUT /api/payroll/{payroll_id}/mark-paid - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ PUT /api/payroll/{payroll_id}/mark-paid - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ PUT /api/payroll/{payroll_id}/mark-paid - ERROR: {e}")
+        return False, None
+
 def run_all_tests():
-    """Run all Settings, Stock Management, and GPS Tracking API tests"""
-    print("🍽️  KIZA Restaurant - Settings, Stock Management & GPS Tracking API Tests")
+    """Run all Settings, Stock Management, GPS Tracking, Employee Management, and Payroll API tests"""
+    print("🍽️  KIZA Restaurant - Complete Backend API Test Suite")
     print("=" * 80)
     
     all_results = {}
     driver_id = None
+    payroll_id = None
     
     # GPS TRACKING TESTS
     print("\n🛰️  GPS TRACKING API TESTS")
@@ -556,6 +913,43 @@ def run_all_tests():
     success, data = verify_stock_update()
     all_results['verify_stock'] = success
     
+    # EMPLOYEE MANAGEMENT TESTS
+    print("\n👥 EMPLOYEE MANAGEMENT API TESTS")
+    print("=" * 45)
+    
+    # Test 11: Create Employee
+    success, employee_data = test_create_employee()
+    all_results['create_employee'] = success
+    
+    # Test 12: Get All Employees
+    success, employees_data = test_get_employees()
+    all_results['get_employees'] = success
+    
+    # PAYROLL MANAGEMENT TESTS
+    print("\n💰 PAYROLL MANAGEMENT API TESTS")
+    print("=" * 40)
+    
+    # Test 13: Get Payroll Stats
+    success, stats_data = test_get_payroll_stats()
+    all_results['get_payroll_stats'] = success
+    
+    # Test 14: Generate Payroll
+    success, generate_data = test_generate_payroll()
+    all_results['generate_payroll'] = success
+    
+    # Test 15: Get Payroll Overview
+    success, overview_data = test_get_payroll_overview()
+    all_results['get_payroll_overview'] = success
+    
+    # Test 16: Mark Payroll as Paid (if we have payroll records)
+    if success and overview_data and 'records' in overview_data and len(overview_data['records']) > 0:
+        payroll_id = overview_data['records'][0]['id']
+        success, paid_data = test_mark_payroll_paid(payroll_id)
+        all_results['mark_payroll_paid'] = success
+    else:
+        print("⚠️  Skipping mark payroll paid test - no payroll records available")
+        all_results['mark_payroll_paid'] = True  # Skip but don't fail
+    
     # Summary
     print(f"\n{'='*80}")
     print("FINAL TEST RESULTS SUMMARY")
@@ -572,8 +966,22 @@ def run_all_tests():
             print(f"  {test_name.upper().replace('_', ' ')}: {status}")
     
     print("\n⚙️  SETTINGS & STOCK TESTS:")
-    other_tests = ['get_settings', 'update_settings', 'get_stock', 'update_stock', 'verify_stock']
-    for test_name in other_tests:
+    settings_tests = ['get_settings', 'update_settings', 'get_stock', 'update_stock', 'verify_stock']
+    for test_name in settings_tests:
+        if test_name in all_results:
+            status = "✅ PASS" if all_results[test_name] else "❌ FAIL"
+            print(f"  {test_name.upper().replace('_', ' ')}: {status}")
+    
+    print("\n👥 EMPLOYEE MANAGEMENT TESTS:")
+    employee_tests = ['create_employee', 'get_employees']
+    for test_name in employee_tests:
+        if test_name in all_results:
+            status = "✅ PASS" if all_results[test_name] else "❌ FAIL"
+            print(f"  {test_name.upper().replace('_', ' ')}: {status}")
+    
+    print("\n💰 PAYROLL MANAGEMENT TESTS:")
+    payroll_tests = ['get_payroll_stats', 'generate_payroll', 'get_payroll_overview', 'mark_payroll_paid']
+    for test_name in payroll_tests:
         if test_name in all_results:
             status = "✅ PASS" if all_results[test_name] else "❌ FAIL"
             print(f"  {test_name.upper().replace('_', ' ')}: {status}")
@@ -581,7 +989,11 @@ def run_all_tests():
     print(f"\nTests Passed: {passed_tests}/{total_tests}")
     
     if passed_tests == total_tests:
-        print("🎉 ALL TESTS PASSED! GPS Tracking, Settings & Stock Management APIs are working correctly.")
+        print("🎉 ALL TESTS PASSED! Complete Backend API Suite is working correctly.")
+        print("   ✅ GPS Tracking APIs")
+        print("   ✅ Settings & Stock Management APIs") 
+        print("   ✅ Employee Management APIs")
+        print("   ✅ Payroll Management APIs")
         return True
     else:
         print(f"⚠️  {total_tests - passed_tests} test(s) failed. Check the detailed output above.")

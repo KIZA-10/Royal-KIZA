@@ -311,6 +311,96 @@ test_plan:
   test_all: false
   test_priority: "high_first"
 
+  - task: "Employee Management API - Create Employee"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "New Employee Management API implemented. POST /api/employees endpoint created with EmployeeCreate model supporting full_name, phone, email, role, payment_type, payment_rate, iban, bank_name fields. Employee creation with UUID generation and MongoDB storage ready for testing."
+        - working: true
+          agent: "testing"
+          comment: "API endpoint POST /api/employees tested successfully. Created employee 'Jean Dupont' with cook role, fixed_salary payment type (€1800), IBAN and bank details. All required fields validated: UUID ID generated, status set to 'active', proper French data format. Employee creation and database persistence working correctly."
+
+  - task: "Employee Management API - Get All Employees"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Employee retrieval API implemented. GET /api/employees endpoint created to return all employees from database with proper JSON structure excluding MongoDB _id field."
+        - working: true
+          agent: "testing"
+          comment: "API endpoint GET /api/employees tested successfully. Returns list of employees with complete structure including id, full_name, phone, role, payment_type, payment_rate, status fields. Found created employee Jean Dupont with all correct data fields and types. Employee retrieval working correctly."
+
+  - task: "Payroll Management API - Get Payroll Stats"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Payroll statistics API implemented. GET /api/payroll/stats endpoint created to provide current month stats including total/paid/pending amounts and employee counts by role."
+        - working: true
+          agent: "testing"
+          comment: "API endpoint GET /api/payroll/stats tested successfully. Returns comprehensive statistics: current_month section with month/year/totals/employee_count, employee_stats with total_active and by_role breakdown. Shows 1 active cook employee. All fields properly typed as integers/dictionaries. Statistics calculation working correctly."
+
+  - task: "Payroll Management API - Generate Payroll"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Payroll generation API implemented. POST /api/payroll/generate endpoint created to automatically calculate and create payroll records for all active employees based on their payment type (fixed_salary, per_delivery, percentage). Includes driver delivery tracking integration."
+        - working: true
+          agent: "testing"
+          comment: "API endpoint POST /api/payroll/generate tested successfully. Generated 1 payroll record for Jean Dupont with fixed_salary type (€1800). Proper period tracking (March 2026), employee linking, IBAN storage, and status management. All payroll calculation fields present: base_salary, bonus, deductions, total_amount. Payroll generation system working correctly."
+
+  - task: "Payroll Management API - Get Payroll Overview"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Payroll overview API implemented. GET /api/payroll endpoint created to return payroll records for current month with summary totals including employee count, total amounts for pending/paid status."
+        - working: true
+          agent: "testing"
+          comment: "API endpoint GET /api/payroll tested successfully. Returns structured payroll overview with period (month/year), individual records array, and summary totals (total_employees, total_pending, total_paid, total_amount). Found Jean Dupont's payroll record with €1800 pending payment. Payroll overview system working correctly."
+
+  - task: "Payroll Management API - Mark Payroll as Paid"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Payroll payment marking API implemented. PUT /api/payroll/{payroll_id}/mark-paid endpoint created to update payroll record status to paid with timestamp. Returns updated payroll record after successful update."
+        - working: true
+          agent: "testing"
+          comment: "API endpoint PUT /api/payroll/{payroll_id}/mark-paid tested successfully. Marked Jean Dupont's payroll record as paid, status changed from 'pending' to 'paid', paid_at timestamp added (2026-03-07T11:26:04.679318). Returns complete updated record with all fields intact. Payroll payment tracking working correctly."
+
 agent_communication:
     - agent: "testing"
       message: "All backend API endpoints tested successfully. Created comprehensive backend_test.py file and executed full test suite. All 7 tests passed including restaurant info retrieval, menu operations, category filtering, and order management. Backend is fully functional and ready for production use. MongoDB integration working correctly for order persistence."
@@ -320,3 +410,7 @@ agent_communication:
       message: "Completed testing of new Settings and Stock Management APIs. All 4 new endpoints working correctly: GET /api/settings returns default values, PUT /api/settings updates successfully, GET /api/menu/stock returns all item stock status, PUT /api/menu/{item_id}/stock updates individual items. Fixed route order conflict where /menu/stock was being intercepted by /menu/{item_id} route. All 5 comprehensive tests passed including persistence verification. Backend APIs fully functional."
     - agent: "testing"
       message: "COMPLETED GPS TRACKING API TESTING: All 5 GPS tracking endpoints tested successfully and working perfectly. GET /api/drivers returns 3 active drivers, PUT /api/drivers/{id}/location updates coordinates (48.8566, 2.3522), GET /api/drivers/locations/active shows drivers with GPS data and assigned orders, GET /api/tracking/overview provides accurate statistics (3 active drivers, 1 with location, 0 in delivery, 3 pending orders), and location persistence verified. Updated backend_test.py with comprehensive GPS tracking tests. Total 10/10 tests passed. GPS tracking system fully functional for production use."
+    - agent: "main"
+      message: "Implemented comprehensive Employee and Payroll Management System. Added full CRUD operations for employees, payroll generation with multiple payment types (fixed_salary, per_delivery, percentage), and payroll tracking features. System supports linking employees to driver accounts and automatic calculation of payments based on delivery performance. Ready for testing all new endpoints: POST /api/employees, GET /api/employees, GET /api/payroll/stats, POST /api/payroll/generate, GET /api/payroll, PUT /api/payroll/{id}/mark-paid."
+    - agent: "testing"
+      message: "COMPLETED EMPLOYEE AND PAYROLL MANAGEMENT API TESTING: All 6 Employee and Payroll Management endpoints tested successfully and working perfectly. POST /api/employees creates employee 'Jean Dupont' (cook, €1800 fixed salary) with proper UUID and validation, GET /api/employees returns complete employee list, GET /api/payroll/stats provides comprehensive statistics, POST /api/payroll/generate creates payroll records automatically based on payment type, GET /api/payroll returns structured overview with summary totals, PUT /api/payroll/{id}/mark-paid updates status and adds payment timestamp. Extended backend_test.py with comprehensive Employee and Payroll tests. Total 16/16 tests passed. Complete backend API suite (GPS, Settings, Stock, Employee, Payroll) fully functional for production use."

@@ -113,6 +113,90 @@ class LocationUpdate(BaseModel):
     latitude: float
     longitude: float
 
+# ============ EMPLOYEE & PAYROLL MODELS ============
+class EmployeeRole(str, Enum):
+    DRIVER = "driver"
+    COOK = "cook"
+    SERVER = "server"
+    MANAGER = "manager"
+    CLEANER = "cleaner"
+    OTHER = "other"
+
+class PaymentType(str, Enum):
+    PER_DELIVERY = "per_delivery"  # Fixed amount per delivery
+    PERCENTAGE = "percentage"      # Percentage of order amount
+    FIXED_SALARY = "fixed_salary"  # Monthly fixed salary
+
+class EmployeeStatus(str, Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    ON_LEAVE = "on_leave"
+
+class Employee(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    full_name: str
+    phone: str
+    email: Optional[str] = None
+    role: EmployeeRole
+    payment_type: PaymentType
+    payment_rate: float  # Amount per delivery, percentage (0-100), or monthly salary
+    iban: Optional[str] = None
+    bank_name: Optional[str] = None
+    status: EmployeeStatus = EmployeeStatus.ACTIVE
+    driver_id: Optional[str] = None  # Link to driver account if role is DRIVER
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    notes: Optional[str] = None
+
+class EmployeeCreate(BaseModel):
+    full_name: str
+    phone: str
+    email: Optional[str] = None
+    role: EmployeeRole
+    payment_type: PaymentType
+    payment_rate: float
+    iban: Optional[str] = None
+    bank_name: Optional[str] = None
+    driver_id: Optional[str] = None
+    notes: Optional[str] = None
+
+class EmployeeUpdate(BaseModel):
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[EmployeeRole] = None
+    payment_type: Optional[PaymentType] = None
+    payment_rate: Optional[float] = None
+    iban: Optional[str] = None
+    bank_name: Optional[str] = None
+    status: Optional[EmployeeStatus] = None
+    notes: Optional[str] = None
+
+class PayrollStatus(str, Enum):
+    PENDING = "pending"
+    PAID = "paid"
+    CANCELLED = "cancelled"
+
+class PayrollRecord(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    employee_id: str
+    employee_name: str
+    role: EmployeeRole
+    period_month: int  # 1-12
+    period_year: int
+    total_deliveries: int = 0
+    total_orders_amount: float = 0.0
+    base_salary: float = 0.0
+    bonus: float = 0.0
+    deductions: float = 0.0
+    total_amount: float = 0.0
+    status: PayrollStatus = PayrollStatus.PENDING
+    payment_type: PaymentType
+    payment_rate: float
+    iban: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    paid_at: Optional[datetime] = None
+    notes: Optional[str] = None
+
 # Simple password hashing (for production, use bcrypt)
 import hashlib
 def hash_password(password: str) -> str:
@@ -714,6 +798,318 @@ async def get_tracking_overview():
         "drivers_with_location": drivers_with_location,
         "orders_in_delivery": orders_in_delivery,
         "pending_orders": pending_orders
+    }
+
+# ============ EMPLOYEE MANAGEMENT ROUTES ============
+
+@api_router.get("/employees")
+async def get_employees():
+    """Get all employees"""
+    employees = await db.employees.find({}).to_list(100)
+    for emp in employees:
+        emp.pop('_id', None)
+    return employees
+
+@api_router.post("/employees")
+async def create_employee(employee: EmployeeCreate):
+    """Create a new employee"""
+    emp_dict = employee.dict()
+    emp_dict['id'] = str(uuid.uuid4())
+    emp_dict['status'] = EmployeeStatus.ACTIVE.value
+    emp_dict['created_at'] = datetime.utcnow().isoformat()
+    
+    await db.employees.insert_one(emp_dict)
+    emp_dict.pop('_id', None)
+    return emp_dict
+
+@api_router.get("/employees/{employee_id}")
+async def get_employee(employee_id: str):
+    """Get employee by ID"""
+    employee = await db.employees.find_one({"id": employee_id})
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    employee.pop('_id', None)
+    return employee
+
+@api_router.put("/employees/{employee_id}")
+async def update_employee(employee_id: str, update: EmployeeUpdate):
+    """Update employee"""
+    update_data = {k: v for k, v in update.dict().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    
+    result = await db.employees.update_one(
+        {"id": employee_id},
+        {"$set": update_data}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    employee = await db.employees.find_one({"id": employee_id})
+    employee.pop('_id', None)
+    return employee
+
+@api_router.delete("/employees/{employee_id}")
+async def delete_employee(employee_id: str):
+    """Delete employee"""
+    result = await db.employees.delete_one({"id": employee_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    return {"message": "Employee deleted"}
+
+@api_router.get("/employees/{employee_id}/earnings")
+async def get_employee_earnings(employee_id: str, period: str = "month"):
+    """Get employee earnings history"""
+    employee = await db.employees.find_one({"id": employee_id})
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    # Get payroll records for this employee
+    payroll_records = await db.payroll.find(
+        {"employee_id": employee_id}
+    ).sort("period_year", -1).sort("period_month", -1).to_list(24)
+    
+    for record in payroll_records:
+        record.pop('_id', None)
+    
+    # If employee is a driver, get detailed delivery stats
+    delivery_stats = []
+    if employee.get('role') == 'driver' and employee.get('driver_id'):
+        # Get orders delivered by this driver
+        orders = await db.orders.find({
+            "assigned_driver_id": employee.get('driver_id'),
+            "status": "delivered"
+        }).sort("created_at", -1).to_list(100)
+        
+        # Group by day
+        daily_stats = {}
+        for order in orders:
+            created_at = order.get('created_at', '')
+            if isinstance(created_at, str):
+                day = created_at[:10]
+            else:
+                day = created_at.strftime('%Y-%m-%d')
+            
+            if day not in daily_stats:
+                daily_stats[day] = {"date": day, "deliveries": 0, "total_amount": 0}
+            daily_stats[day]['deliveries'] += 1
+            daily_stats[day]['total_amount'] += order.get('grand_total', 0)
+        
+        delivery_stats = sorted(daily_stats.values(), key=lambda x: x['date'], reverse=True)
+    
+    return {
+        "employee": employee,
+        "payroll_records": payroll_records,
+        "delivery_stats": delivery_stats
+    }
+
+# ============ PAYROLL ROUTES ============
+
+@api_router.get("/payroll")
+async def get_payroll_overview(month: int = None, year: int = None):
+    """Get payroll overview for a specific month"""
+    if month is None:
+        month = datetime.utcnow().month
+    if year is None:
+        year = datetime.utcnow().year
+    
+    # Get all payroll records for this period
+    records = await db.payroll.find({
+        "period_month": month,
+        "period_year": year
+    }).to_list(100)
+    
+    for record in records:
+        record.pop('_id', None)
+    
+    # Calculate totals
+    total_pending = sum(r['total_amount'] for r in records if r['status'] == 'pending')
+    total_paid = sum(r['total_amount'] for r in records if r['status'] == 'paid')
+    
+    return {
+        "period": {"month": month, "year": year},
+        "records": records,
+        "summary": {
+            "total_employees": len(records),
+            "total_pending": total_pending,
+            "total_paid": total_paid,
+            "total_amount": total_pending + total_paid
+        }
+    }
+
+@api_router.post("/payroll/generate")
+async def generate_payroll(month: int = None, year: int = None):
+    """Generate payroll for all active employees for a specific month"""
+    if month is None:
+        month = datetime.utcnow().month
+    if year is None:
+        year = datetime.utcnow().year
+    
+    # Check if payroll already exists for this period
+    existing = await db.payroll.find_one({
+        "period_month": month,
+        "period_year": year
+    })
+    
+    # Get all active employees
+    employees = await db.employees.find({"status": "active"}).to_list(100)
+    
+    generated_records = []
+    
+    for emp in employees:
+        # Check if record already exists for this employee and period
+        existing_record = await db.payroll.find_one({
+            "employee_id": emp['id'],
+            "period_month": month,
+            "period_year": year
+        })
+        if existing_record:
+            continue
+        
+        # Calculate salary based on payment type
+        total_deliveries = 0
+        total_orders_amount = 0.0
+        base_salary = 0.0
+        
+        if emp['payment_type'] == 'fixed_salary':
+            base_salary = emp['payment_rate']
+        
+        elif emp['payment_type'] in ['per_delivery', 'percentage']:
+            # Get deliveries for this driver in this month
+            if emp.get('driver_id'):
+                start_date = datetime(year, month, 1)
+                if month == 12:
+                    end_date = datetime(year + 1, 1, 1)
+                else:
+                    end_date = datetime(year, month + 1, 1)
+                
+                orders = await db.orders.find({
+                    "assigned_driver_id": emp.get('driver_id'),
+                    "status": "delivered",
+                    "delivered_at": {
+                        "$gte": start_date.isoformat(),
+                        "$lt": end_date.isoformat()
+                    }
+                }).to_list(500)
+                
+                total_deliveries = len(orders)
+                total_orders_amount = sum(o.get('grand_total', 0) for o in orders)
+                
+                if emp['payment_type'] == 'per_delivery':
+                    base_salary = total_deliveries * emp['payment_rate']
+                else:  # percentage
+                    base_salary = total_orders_amount * (emp['payment_rate'] / 100)
+        
+        # Create payroll record
+        payroll_record = {
+            "id": str(uuid.uuid4()),
+            "employee_id": emp['id'],
+            "employee_name": emp['full_name'],
+            "role": emp['role'],
+            "period_month": month,
+            "period_year": year,
+            "total_deliveries": total_deliveries,
+            "total_orders_amount": total_orders_amount,
+            "base_salary": round(base_salary, 2),
+            "bonus": 0.0,
+            "deductions": 0.0,
+            "total_amount": round(base_salary, 2),
+            "status": "pending",
+            "payment_type": emp['payment_type'],
+            "payment_rate": emp['payment_rate'],
+            "iban": emp.get('iban'),
+            "created_at": datetime.utcnow().isoformat(),
+            "paid_at": None,
+            "notes": None
+        }
+        
+        await db.payroll.insert_one(payroll_record)
+        payroll_record.pop('_id', None)
+        generated_records.append(payroll_record)
+    
+    return {
+        "message": f"Generated {len(generated_records)} payroll records",
+        "period": {"month": month, "year": year},
+        "records": generated_records
+    }
+
+@api_router.put("/payroll/{payroll_id}/mark-paid")
+async def mark_payroll_paid(payroll_id: str):
+    """Mark a payroll record as paid"""
+    result = await db.payroll.update_one(
+        {"id": payroll_id},
+        {"$set": {
+            "status": "paid",
+            "paid_at": datetime.utcnow().isoformat()
+        }}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Payroll record not found")
+    
+    record = await db.payroll.find_one({"id": payroll_id})
+    record.pop('_id', None)
+    return record
+
+@api_router.put("/payroll/{payroll_id}/update")
+async def update_payroll(payroll_id: str, bonus: float = 0, deductions: float = 0, notes: str = None):
+    """Update payroll record with bonus/deductions"""
+    record = await db.payroll.find_one({"id": payroll_id})
+    if not record:
+        raise HTTPException(status_code=404, detail="Payroll record not found")
+    
+    new_total = record['base_salary'] + bonus - deductions
+    
+    update_data = {
+        "bonus": bonus,
+        "deductions": deductions,
+        "total_amount": round(new_total, 2)
+    }
+    if notes:
+        update_data['notes'] = notes
+    
+    await db.payroll.update_one(
+        {"id": payroll_id},
+        {"$set": update_data}
+    )
+    
+    updated = await db.payroll.find_one({"id": payroll_id})
+    updated.pop('_id', None)
+    return updated
+
+@api_router.get("/payroll/stats")
+async def get_payroll_stats():
+    """Get overall payroll statistics"""
+    # Current month stats
+    now = datetime.utcnow()
+    current_month_records = await db.payroll.find({
+        "period_month": now.month,
+        "period_year": now.year
+    }).to_list(100)
+    
+    current_month_total = sum(r['total_amount'] for r in current_month_records)
+    current_month_paid = sum(r['total_amount'] for r in current_month_records if r['status'] == 'paid')
+    current_month_pending = current_month_total - current_month_paid
+    
+    # Employee counts by role
+    employees = await db.employees.find({"status": "active"}).to_list(100)
+    role_counts = {}
+    for emp in employees:
+        role = emp.get('role', 'other')
+        role_counts[role] = role_counts.get(role, 0) + 1
+    
+    return {
+        "current_month": {
+            "month": now.month,
+            "year": now.year,
+            "total": current_month_total,
+            "paid": current_month_paid,
+            "pending": current_month_pending,
+            "employee_count": len(current_month_records)
+        },
+        "employee_stats": {
+            "total_active": len(employees),
+            "by_role": role_counts
+        }
     }
 
 # ============ STRIPE PAYMENT ROUTES ============
