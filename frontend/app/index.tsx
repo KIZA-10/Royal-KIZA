@@ -46,6 +46,8 @@ interface MenuItem {
   image_url?: string;
   available: boolean;
   quantity_info?: string;
+  in_stock?: boolean;
+  is_bestseller?: boolean;
 }
 
 interface CartItem {
@@ -253,6 +255,16 @@ export default function KizaRestaurant() {
   };
 
   const addToCart = (item: MenuItem, quantity: number = 1) => {
+    // Block if item is out of stock
+    if (item.in_stock === false) {
+      Alert.alert(
+        'Rupture de stock',
+        `Désolé, "${item.name}" n'est plus disponible actuellement.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
     const existingIndex = cart.findIndex(c => c.menu_item_id === item.id);
     let newCart: CartItem[];
     
@@ -788,8 +800,12 @@ export default function KizaRestaurant() {
           {filteredMenuItems.map((item) => (
             <TouchableOpacity
               key={item.id}
-              style={styles.menuCard}
+              style={[styles.menuCard, item.in_stock === false && styles.menuCardOutOfStock]}
               onPress={() => {
+                if (item.in_stock === false) {
+                  Alert.alert('Rupture de stock', `"${item.name}" n'est plus disponible.`);
+                  return;
+                }
                 setSelectedItem(item);
                 setItemQuantity(1);
                 setShowItemModal(true);
@@ -797,26 +813,38 @@ export default function KizaRestaurant() {
             >
               <Image
                 source={{ uri: getMenuItemImage(item.category, item.name, item.image_url) }}
-                style={styles.menuCardImage}
+                style={[styles.menuCardImage, item.in_stock === false && styles.menuCardImageOutOfStock]}
               />
+              {/* Out of Stock Badge */}
+              {item.in_stock === false && (
+                <View style={styles.outOfStockBadge}>
+                  <Text style={styles.outOfStockText}>RUPTURE</Text>
+                </View>
+              )}
               <LinearGradient
                 colors={['transparent', 'rgba(0,0,0,0.9)']}
                 style={styles.menuCardOverlay}
               >
                 <View style={styles.menuCardContent}>
-                  <Text style={styles.menuCardName} numberOfLines={1}>{item.name}</Text>
+                  <Text style={[styles.menuCardName, item.in_stock === false && styles.menuCardNameOutOfStock]} numberOfLines={1}>{item.name}</Text>
                   {item.quantity_info && (
                     <Text style={styles.menuCardQuantity}>{item.quantity_info}</Text>
                   )}
-                  <Text style={styles.menuCardPrice}>{item.price.toFixed(2)}€</Text>
+                  <Text style={[styles.menuCardPrice, item.in_stock === false && styles.menuCardPriceOutOfStock]}>{item.price.toFixed(2)}€</Text>
                 </View>
               </LinearGradient>
-              <TouchableOpacity
-                style={styles.menuCardAddButton}
-                onPress={() => addToCart(item, 1)}
-              >
-                <Ionicons name="add" size={22} color={COLORS.black} />
-              </TouchableOpacity>
+              {item.in_stock !== false ? (
+                <TouchableOpacity
+                  style={styles.menuCardAddButton}
+                  onPress={() => addToCart(item, 1)}
+                >
+                  <Ionicons name="add" size={22} color={COLORS.black} />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.menuCardAddButtonDisabled}>
+                  <Ionicons name="close" size={22} color={COLORS.white} />
+                </View>
+              )}
             </TouchableOpacity>
           ))}
         </View>
@@ -2213,6 +2241,46 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  menuCardAddButtonDisabled: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: '#666',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuCardOutOfStock: {
+    opacity: 0.7,
+  },
+  menuCardImageOutOfStock: {
+    opacity: 0.5,
+  },
+  menuCardNameOutOfStock: {
+    color: '#999',
+  },
+  menuCardPriceOutOfStock: {
+    color: '#999',
+    textDecorationLine: 'line-through',
+  },
+  outOfStockBadge: {
+    position: 'absolute',
+    top: '40%',
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(244, 67, 54, 0.95)',
+    paddingVertical: 8,
+    zIndex: 10,
+  },
+  outOfStockText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    letterSpacing: 2,
   },
   
   // Cart Screen
