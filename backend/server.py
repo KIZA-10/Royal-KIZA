@@ -8,7 +8,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 
 # Stripe integration
@@ -1110,6 +1110,170 @@ async def get_payroll_stats():
             "total_active": len(employees),
             "by_role": role_counts
         }
+    }
+
+# ============ FINANCIAL DASHBOARD ROUTES ============
+
+@api_router.get("/finance/transactions")
+async def get_financial_transactions(limit: int = 100, status: str = None):
+    """Get all payment transactions"""
+    query = {}
+    if status:
+        query['payment_status'] = status
+    
+    transactions = await db.payment_transactions.find(query).sort("created_at", -1).to_list(limit)
+    
+    for tx in transactions:
+        tx.pop('_id', None)
+        # Get order details
+        if tx.get('order_id'):
+            order = await db.orders.find_one({"id": tx['order_id']})
+            if order:
+                tx['order_number'] = order.get('order_number')
+                tx['customer_name'] = order.get('delivery_address', {}).get('full_name', 'N/A')
+    
+    return transactions
+
+@api_router.get("/finance/stats")
+async def get_financial_stats():
+    """Get comprehensive financial statistics"""
+    now = datetime.utcnow()
+    today_start = datetime(now.year, now.month, now.day)
+    week_start = today_start - timedelta(days=now.weekday())
+    month_start = datetime(now.year, now.month, 1)
+    
+    # Get all completed orders
+    all_orders = await db.orders.find({}).to_list(1000)
+    
+    # Calculate revenues
+    today_revenue = 0
+    week_revenue = 0
+    month_revenue = 0
+    total_revenue = 0
+    
+    # Daily revenue for chart (last 7 days)
+    daily_revenues = {}
+    for i in range(7):
+        day = today_start - timedelta(days=i)
+        daily_revenues[day.strftime('%Y-%m-%d')] = 0
+    
+    # Monthly revenue for chart (last 6 months)
+    monthly_revenues = {}
+    for i in range(6):
+        if now.month - i > 0:
+            month_key = f"{now.year}-{str(now.month - i).zfill(2)}"
+        else:
+            month_key = f"{now.year - 1}-{str(12 + now.month - i).zfill(2)}"
+        monthly_revenues[month_key] = 0
+    
+    for order in all_orders:
+        amount = order.get('grand_total', 0)
+        created_at_str = order.get('created_at', '')
+        
+        if isinstance(created_at_str, str) and created_at_str:
+            try:
+                created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00').replace('+00:00', ''))
+            except:
+                continue
+        else:
+            continue
+        
+        total_revenue += amount
+        
+        # Today
+        if created_at >= today_start:
+            today_revenue += amount
+        
+        # This week
+        if created_at >= week_start:
+            week_revenue += amount
+        
+        # This month
+        if created_at >= month_start:
+            month_revenue += amount
+        
+        # Daily breakdown
+        day_key = created_at.strftime('%Y-%m-%d')
+        if day_key in daily_revenues:
+            daily_revenues[day_key] += amount
+        
+        # Monthly breakdown
+        month_key = created_at.strftime('%Y-%m')
+        if month_key in monthly_revenues:
+            monthly_revenues[month_key] += amount
+    
+    # Get payment transactions stats
+    paid_transactions = await db.payment_transactions.count_documents({"payment_status": "paid"})
+    pending_transactions = await db.payment_transactions.count_documents({"payment_status": "pending"})
+    
+    # Order counts
+    total_orders = len(all_orders)
+    delivered_orders = len([o for o in all_orders if o.get('status') == 'delivered'])
+    pending_orders = len([o for o in all_orders if o.get('status') in ['confirmed', 'preparing', 'delivering']])
+    
+    # Average order value
+    avg_order_value = total_revenue / total_orders if total_orders > 0 else 0
+    
+    return {
+        "revenue": {
+            "today": round(today_revenue, 2),
+            "week": round(week_revenue, 2),
+            "month": round(month_revenue, 2),
+            "total": round(total_revenue, 2)
+        },
+        "orders": {
+            "total": total_orders,
+            "delivered": delivered_orders,
+            "pending": pending_orders,
+            "average_value": round(avg_order_value, 2)
+        },
+        "transactions": {
+            "paid": paid_transactions,
+            "pending": pending_transactions
+        },
+        "charts": {
+            "daily": [{"date": k, "amount": round(v, 2)} for k, v in sorted(daily_revenues.items())],
+            "monthly": [{"month": k, "amount": round(v, 2)} for k, v in sorted(monthly_revenues.items())]
+        }
+    }
+
+@api_router.get("/finance/summary")
+async def get_finance_summary():
+    """Get quick finance summary for dashboard"""
+    now = datetime.utcnow()
+    today_start = datetime(now.year, now.month, now.day)
+    
+    # Today's orders
+    all_orders = await db.orders.find({}).to_list(1000)
+    
+    today_revenue = 0
+    today_orders = 0
+    
+    for order in all_orders:
+        created_at_str = order.get('created_at', '')
+        if isinstance(created_at_str, str) and created_at_str:
+            try:
+                created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00').replace('+00:00', ''))
+                if created_at >= today_start:
+                    today_revenue += order.get('grand_total', 0)
+                    today_orders += 1
+            except:
+                pass
+    
+    # Recent transactions
+    recent_transactions = await db.payment_transactions.find(
+        {"payment_status": "paid"}
+    ).sort("created_at", -1).to_list(5)
+    
+    for tx in recent_transactions:
+        tx.pop('_id', None)
+    
+    return {
+        "today": {
+            "revenue": round(today_revenue, 2),
+            "orders": today_orders
+        },
+        "recent_transactions": recent_transactions
     }
 
 # ============ STRIPE PAYMENT ROUTES ============

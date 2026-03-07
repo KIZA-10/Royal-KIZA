@@ -619,6 +619,202 @@ def test_get_employees():
         print(f"❌ GET /api/employees - ERROR: {e}")
         return False, None
 
+# ============ FINANCIAL DASHBOARD TESTS ============
+
+def test_get_financial_stats():
+    """Test GET /api/finance/stats - Get comprehensive financial statistics"""
+    print_test_header("GET /api/finance/stats - Get Financial Statistics")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/finance/stats", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                # Validate expected structure
+                expected_sections = ['revenue', 'orders', 'transactions', 'charts']
+                success = True
+                
+                for section in expected_sections:
+                    if section in response_data:
+                        print(f"✓ {section}: present")
+                        
+                        if section == 'revenue':
+                            revenue = response_data[section]
+                            revenue_fields = ['today', 'week', 'month', 'total']
+                            for field in revenue_fields:
+                                if field in revenue:
+                                    print(f"  ✓ {field}: €{revenue[field]} ({type(revenue[field])})")
+                                else:
+                                    print(f"  ✗ Missing field in revenue: {field}")
+                                    success = False
+                        
+                        elif section == 'orders':
+                            orders = response_data[section]
+                            order_fields = ['total', 'delivered', 'pending', 'average_value']
+                            for field in order_fields:
+                                if field in orders:
+                                    print(f"  ✓ {field}: {orders[field]} ({type(orders[field])})")
+                                else:
+                                    print(f"  ✗ Missing field in orders: {field}")
+                                    success = False
+                        
+                        elif section == 'transactions':
+                            transactions = response_data[section]
+                            trans_fields = ['paid', 'pending']
+                            for field in trans_fields:
+                                if field in transactions:
+                                    print(f"  ✓ {field}: {transactions[field]} ({type(transactions[field])})")
+                                else:
+                                    print(f"  ✗ Missing field in transactions: {field}")
+                                    success = False
+                        
+                        elif section == 'charts':
+                            charts = response_data[section]
+                            chart_fields = ['daily', 'monthly']
+                            for field in chart_fields:
+                                if field in charts:
+                                    chart_data = charts[field]
+                                    if isinstance(chart_data, list):
+                                        print(f"  ✓ {field}: {len(chart_data)} data points")
+                                        if len(chart_data) > 0:
+                                            first_point = chart_data[0]
+                                            if field == 'daily' and 'date' in first_point and 'amount' in first_point:
+                                                print(f"    ✓ Daily data format valid: date={first_point['date']}, amount={first_point['amount']}")
+                                            elif field == 'monthly' and 'month' in first_point and 'amount' in first_point:
+                                                print(f"    ✓ Monthly data format valid: month={first_point['month']}, amount={first_point['amount']}")
+                                    else:
+                                        print(f"  ✗ {field} should be a list")
+                                        success = False
+                                else:
+                                    print(f"  ✗ Missing field in charts: {field}")
+                                    success = False
+                    else:
+                        print(f"✗ Missing section: {section}")
+                        success = False
+                
+                if success:
+                    print("✅ GET /api/finance/stats - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ GET /api/finance/stats - FAILED: Invalid structure")
+                    return False, response_data
+            else:
+                print("❌ GET /api/finance/stats - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/finance/stats - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/finance/stats - ERROR: {e}")
+        return False, None
+
+def test_get_financial_transactions():
+    """Test GET /api/finance/transactions - Get payment transactions"""
+    print_test_header("GET /api/finance/transactions - Get Payment Transactions")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/finance/transactions", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, list):
+                print(f"Found {len(response_data)} transactions")
+                
+                # Validate structure if there are transactions
+                if len(response_data) > 0:
+                    first_transaction = response_data[0]
+                    print(f"\nValidating first transaction structure:")
+                    
+                    expected_fields = ['id', 'order_id', 'amount', 'currency', 'payment_status', 'created_at']
+                    success = True
+                    
+                    for field in expected_fields:
+                        if field in first_transaction:
+                            print(f"  ✓ {field}: {first_transaction[field]} ({type(first_transaction[field])})")
+                        else:
+                            print(f"  ⚠️  {field}: not present (may be optional)")
+                    
+                    # Check for order details if present
+                    if 'order_number' in first_transaction:
+                        print(f"  ✓ order_number: {first_transaction['order_number']}")
+                    if 'customer_name' in first_transaction:
+                        print(f"  ✓ customer_name: {first_transaction['customer_name']}")
+                    
+                    print("✅ GET /api/finance/transactions - SUCCESS")
+                    return True, response_data
+                else:
+                    print("⚠️  No transactions found, but API is working")
+                    print("✅ GET /api/finance/transactions - SUCCESS (empty list)")
+                    return True, response_data
+            else:
+                print("❌ GET /api/finance/transactions - FAILED: Response is not a list")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/finance/transactions - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/finance/transactions - ERROR: {e}")
+        return False, None
+
+def test_get_finance_summary():
+    """Test GET /api/finance/summary - Get quick finance summary"""
+    print_test_header("GET /api/finance/summary - Get Finance Summary")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/finance/summary", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                # Validate expected structure
+                expected_sections = ['today', 'recent_transactions']
+                success = True
+                
+                for section in expected_sections:
+                    if section in response_data:
+                        print(f"✓ {section}: present")
+                        
+                        if section == 'today':
+                            today = response_data[section]
+                            today_fields = ['revenue', 'orders']
+                            for field in today_fields:
+                                if field in today:
+                                    print(f"  ✓ {field}: {today[field]} ({type(today[field])})")
+                                else:
+                                    print(f"  ✗ Missing field in today: {field}")
+                                    success = False
+                        
+                        elif section == 'recent_transactions':
+                            recent = response_data[section]
+                            if isinstance(recent, list):
+                                print(f"  ✓ recent_transactions: {len(recent)} transactions")
+                            else:
+                                print(f"  ✗ recent_transactions should be a list")
+                                success = False
+                    else:
+                        print(f"✗ Missing section: {section}")
+                        success = False
+                
+                if success:
+                    print("✅ GET /api/finance/summary - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ GET /api/finance/summary - FAILED: Invalid structure")
+                    return False, response_data
+            else:
+                print("❌ GET /api/finance/summary - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/finance/summary - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/finance/summary - ERROR: {e}")
+        return False, None
+
 # ============ PAYROLL MANAGEMENT TESTS ============
 
 def test_get_payroll_stats():
@@ -950,6 +1146,22 @@ def run_all_tests():
         print("⚠️  Skipping mark payroll paid test - no payroll records available")
         all_results['mark_payroll_paid'] = True  # Skip but don't fail
     
+    # FINANCIAL DASHBOARD TESTS
+    print("\n📊 FINANCIAL DASHBOARD API TESTS")
+    print("=" * 40)
+    
+    # Test 17: Get Financial Stats
+    success, stats_data = test_get_financial_stats()
+    all_results['get_financial_stats'] = success
+    
+    # Test 18: Get Financial Transactions
+    success, transactions_data = test_get_financial_transactions()
+    all_results['get_financial_transactions'] = success
+    
+    # Test 19: Get Finance Summary
+    success, summary_data = test_get_finance_summary()
+    all_results['get_finance_summary'] = success
+    
     # Summary
     print(f"\n{'='*80}")
     print("FINAL TEST RESULTS SUMMARY")
@@ -986,6 +1198,13 @@ def run_all_tests():
             status = "✅ PASS" if all_results[test_name] else "❌ FAIL"
             print(f"  {test_name.upper().replace('_', ' ')}: {status}")
     
+    print("\n📊 FINANCIAL DASHBOARD TESTS:")
+    finance_tests = ['get_financial_stats', 'get_financial_transactions', 'get_finance_summary']
+    for test_name in finance_tests:
+        if test_name in all_results:
+            status = "✅ PASS" if all_results[test_name] else "❌ FAIL"
+            print(f"  {test_name.upper().replace('_', ' ')}: {status}")
+    
     print(f"\nTests Passed: {passed_tests}/{total_tests}")
     
     if passed_tests == total_tests:
@@ -994,6 +1213,7 @@ def run_all_tests():
         print("   ✅ Settings & Stock Management APIs") 
         print("   ✅ Employee Management APIs")
         print("   ✅ Payroll Management APIs")
+        print("   ✅ Financial Dashboard APIs")
         return True
     else:
         print(f"⚠️  {total_tests - passed_tests} test(s) failed. Check the detailed output above.")
