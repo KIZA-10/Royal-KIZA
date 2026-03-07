@@ -1207,16 +1207,204 @@ def run_all_tests():
     
     print(f"\nTests Passed: {passed_tests}/{total_tests}")
     
-    if passed_tests == total_tests:
+    # ============ ADMIN PASSWORD AND MENU MANAGEMENT TESTS ============
+    
+    # Run Admin Password Management tests
+    print_test_header("ADMIN PASSWORD MANAGEMENT API TESTS")
+    admin_password_tests_passed = 0
+    
+    # Test 1: Get admin passwords
+    print_test_header("GET /api/admin/passwords")
+    try:
+        response = requests.get(f"{API_BASE_URL}/admin/passwords", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, list):
+                sections = [item.get('section') for item in response_data]
+                expected_sections = ["orders", "drivers", "employees", "finance", "gps", "settings", "menu"]
+                if all(section in sections for section in expected_sections):
+                    print("✅ GET /api/admin/passwords - SUCCESS: All admin sections returned with password status")
+                    admin_password_tests_passed += 1
+                else:
+                    print("❌ GET /api/admin/passwords - FAILED: Missing some expected sections")
+            else:
+                print("❌ GET /api/admin/passwords - FAILED: Response is not a list")
+        else:
+            print("❌ GET /api/admin/passwords - FAILED: Non-200 status code")
+    except Exception as e:
+        print(f"❌ GET /api/admin/passwords - ERROR: {str(e)}")
+    
+    # Test 2: Verify default password
+    print_test_header("POST /api/admin/passwords/verify (default password)")
+    try:
+        verify_data = {
+            "section": "orders",
+            "password": "kiza2024admin"
+        }
+        response = requests.post(f"{API_BASE_URL}/admin/passwords/verify", 
+                               json=verify_data, timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if response_data.get('valid') is True and response_data.get('section') == 'orders':
+                print("✅ POST /api/admin/passwords/verify (default) - SUCCESS: Default password verified")
+                admin_password_tests_passed += 1
+            else:
+                print("❌ POST /api/admin/passwords/verify (default) - FAILED: Invalid response structure")
+        else:
+            print("❌ POST /api/admin/passwords/verify (default) - FAILED: Non-200 status code")
+    except Exception as e:
+        print(f"❌ POST /api/admin/passwords/verify (default) - ERROR: {str(e)}")
+    
+    # Test 3: Update password
+    print_test_header("PUT /api/admin/passwords/update")
+    try:
+        update_data = {
+            "section": "orders", 
+            "new_password": "test123"
+        }
+        response = requests.put(f"{API_BASE_URL}/admin/passwords/update", 
+                              json=update_data, timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if "Password updated for orders" in response_data.get('message', ''):
+                print("✅ PUT /api/admin/passwords/update - SUCCESS: Password updated successfully")
+                admin_password_tests_passed += 1
+            else:
+                print("❌ PUT /api/admin/passwords/update - FAILED: Invalid response message")
+        else:
+            print("❌ PUT /api/admin/passwords/update - FAILED: Non-200 status code")
+    except Exception as e:
+        print(f"❌ PUT /api/admin/passwords/update - ERROR: {str(e)}")
+    
+    # Test 4: Verify new password
+    print_test_header("POST /api/admin/passwords/verify (new password)")
+    try:
+        verify_new_data = {
+            "section": "orders",
+            "password": "test123"
+        }
+        response = requests.post(f"{API_BASE_URL}/admin/passwords/verify", 
+                               json=verify_new_data, timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if response_data.get('valid') is True and response_data.get('section') == 'orders':
+                print("✅ POST /api/admin/passwords/verify (new) - SUCCESS: New password verified")
+                admin_password_tests_passed += 1
+            else:
+                print("❌ POST /api/admin/passwords/verify (new) - FAILED: Invalid response structure")
+        else:
+            print("❌ POST /api/admin/passwords/verify (new) - FAILED: Non-200 status code")
+    except Exception as e:
+        print(f"❌ POST /api/admin/passwords/verify (new) - ERROR: {str(e)}")
+
+    # Run Menu Management tests
+    print_test_header("MENU MANAGEMENT API TESTS")
+    menu_tests_passed = 0
+    
+    # Test 5: Get menu categories
+    print_test_header("GET /api/admin/menu/categories")
+    try:
+        response = requests.get(f"{API_BASE_URL}/admin/menu/categories", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, list):
+                category_ids = [item.get('id') for item in response_data]
+                expected_categories = ['entrees', 'grillades', 'burgers', 'tacos', 'plats', 'poissons', 'accompagnements', 'desserts', 'boissons']
+                if all(cat in category_ids for cat in expected_categories):
+                    print("✅ GET /api/admin/menu/categories - SUCCESS: All menu categories returned")
+                    menu_tests_passed += 1
+                else:
+                    print("❌ GET /api/admin/menu/categories - FAILED: Missing some expected categories")
+            else:
+                print("❌ GET /api/admin/menu/categories - FAILED: Response is not a list")
+        else:
+            print("❌ GET /api/admin/menu/categories - FAILED: Non-200 status code")
+    except Exception as e:
+        print(f"❌ GET /api/admin/menu/categories - ERROR: {str(e)}")
+    
+    # Test 6: Get admin menu items
+    print_test_header("GET /api/admin/menu")
+    try:
+        response = requests.get(f"{API_BASE_URL}/admin/menu", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, list):
+                if len(response_data) > 0:
+                    # Check structure of first item
+                    first_item = response_data[0]
+                    required_fields = ['id', 'name', 'description', 'price', 'category', 'is_bestseller', 'in_stock']
+                    if all(field in first_item for field in required_fields):
+                        print(f"✅ GET /api/admin/menu - SUCCESS: Found {len(response_data)} menu items with proper structure")
+                        menu_tests_passed += 1
+                    else:
+                        print("❌ GET /api/admin/menu - FAILED: Menu items missing required fields")
+                else:
+                    print("✅ GET /api/admin/menu - SUCCESS: Empty menu (valid response)")
+                    menu_tests_passed += 1
+            else:
+                print("❌ GET /api/admin/menu - FAILED: Response is not a list")
+        else:
+            print("❌ GET /api/admin/menu - FAILED: Non-200 status code")
+    except Exception as e:
+        print(f"❌ GET /api/admin/menu - ERROR: {str(e)}")
+    
+    # Test 7: Create new menu item
+    print_test_header("POST /api/admin/menu")
+    try:
+        menu_item_data = {
+            "name": "Test Burger",
+            "description": "Delicious test burger with fresh ingredients",
+            "price": 12.99,
+            "category": "burgers",
+            "is_bestseller": False,
+            "in_stock": True
+        }
+        response = requests.post(f"{API_BASE_URL}/admin/menu", 
+                               json=menu_item_data, timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if (response_data.get('name') == 'Test Burger' and 
+                response_data.get('price') == 12.99 and
+                response_data.get('category') == 'burgers'):
+                print("✅ POST /api/admin/menu - SUCCESS: Menu item created successfully")
+                menu_tests_passed += 1
+                created_item_id = response_data.get('id')  # Store for potential cleanup
+            else:
+                print("❌ POST /api/admin/menu - FAILED: Created item doesn't match input data")
+        else:
+            print("❌ POST /api/admin/menu - FAILED: Non-200 status code")
+    except Exception as e:
+        print(f"❌ POST /api/admin/menu - ERROR: {str(e)}")
+
+    # Update totals for final results
+    admin_menu_tests_passed = admin_password_tests_passed + menu_tests_passed
+    total_tests = passed_tests + 7  # 4 admin password tests + 3 menu management tests
+    total_passed = passed_tests + admin_menu_tests_passed
+    
+    print_test_header("ADMIN PASSWORD & MENU MANAGEMENT TEST SUMMARY")
+    print(f"Admin Password Management Tests: {admin_password_tests_passed}/4 passed")
+    print(f"Menu Management Tests: {menu_tests_passed}/3 passed")
+    print(f"Total Admin Tests: {admin_menu_tests_passed}/7 passed")
+    
+    if total_passed == total_tests:
         print("🎉 ALL TESTS PASSED! Complete Backend API Suite is working correctly.")
         print("   ✅ GPS Tracking APIs")
         print("   ✅ Settings & Stock Management APIs") 
         print("   ✅ Employee Management APIs")
         print("   ✅ Payroll Management APIs")
         print("   ✅ Financial Dashboard APIs")
+        print("   ✅ Admin Password Management APIs")
+        print("   ✅ Menu Management APIs")
         return True
     else:
-        print(f"⚠️  {total_tests - passed_tests} test(s) failed. Check the detailed output above.")
+        print(f"⚠️  {total_tests - total_passed} test(s) failed. Check the detailed output above.")
         return False
 
 if __name__ == "__main__":

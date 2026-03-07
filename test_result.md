@@ -337,7 +337,7 @@ frontend:
 metadata:
   created_by: "testing_agent"
   version: "1.0"
-  test_sequence: 1
+  test_sequence: 2
   run_ui: false
 
 test_plan:
@@ -436,6 +436,78 @@ test_plan:
           agent: "testing"
           comment: "API endpoint PUT /api/payroll/{payroll_id}/mark-paid tested successfully. Marked Jean Dupont's payroll record as paid, status changed from 'pending' to 'paid', paid_at timestamp added (2026-03-07T11:26:04.679318). Returns complete updated record with all fields intact. Payroll payment tracking working correctly."
 
+  - task: "Admin Password Management API - Get Passwords"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint GET /api/admin/passwords tested successfully. Returns all 7 admin sections (orders, drivers, employees, finance, gps, settings, menu) with their password status. Shows which sections have custom passwords vs default password. Response structure validated correctly."
+
+  - task: "Admin Password Management API - Verify Password"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint POST /api/admin/passwords/verify tested successfully. Verifies passwords correctly for both default (kiza2024admin) and custom passwords. Orders section with custom password correctly rejects default password. Drivers section with default password accepts kiza2024admin. Password verification logic working properly."
+
+  - task: "Admin Password Management API - Update Password"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint PUT /api/admin/passwords/update tested successfully. Updates password for orders section from default to custom password 'test123'. Password hash stored correctly in database. Returns proper success message and section confirmation."
+
+  - task: "Menu Management API - Get Categories"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint GET /api/admin/menu/categories tested successfully. Returns 9 menu categories (entrees, grillades, burgers, tacos, plats, poissons, accompagnements, desserts, boissons) with proper ID and name structure. All expected categories present and correctly formatted."
+
+  - task: "Menu Management API - Get Menu Items"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint GET /api/admin/menu tested successfully. Returns menu items from database with complete structure including id, name, description, price, category, is_bestseller, in_stock fields. Properly handles both database items and fallback to MENU_ITEMS list. Menu retrieval working correctly."
+
+  - task: "Menu Management API - Create Menu Item"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint POST /api/admin/menu tested successfully. Creates new menu items with all required fields: name, description, price, category, is_bestseller, in_stock. Generates UUID for new items, stores in database correctly, and returns created item with timestamp. Menu item creation working perfectly."
+
 agent_communication:
     - agent: "testing"
       message: "All backend API endpoints tested successfully. Created comprehensive backend_test.py file and executed full test suite. All 7 tests passed including restaurant info retrieval, menu operations, category filtering, and order management. Backend is fully functional and ready for production use. MongoDB integration working correctly for order persistence."
@@ -451,3 +523,5 @@ agent_communication:
       message: "COMPLETED EMPLOYEE AND PAYROLL MANAGEMENT API TESTING: All 6 Employee and Payroll Management endpoints tested successfully and working perfectly. POST /api/employees creates employee 'Jean Dupont' (cook, €1800 fixed salary) with proper UUID and validation, GET /api/employees returns complete employee list, GET /api/payroll/stats provides comprehensive statistics, POST /api/payroll/generate creates payroll records automatically based on payment type, GET /api/payroll returns structured overview with summary totals, PUT /api/payroll/{id}/mark-paid updates status and adds payment timestamp. Extended backend_test.py with comprehensive Employee and Payroll tests. Total 16/16 tests passed. Complete backend API suite (GPS, Settings, Stock, Employee, Payroll) fully functional for production use."
     - agent: "testing"
       message: "COMPLETED FINANCIAL DASHBOARD API TESTING: All 3 Financial Dashboard endpoints tested successfully and working perfectly. GET /api/finance/stats returns comprehensive financial statistics with revenue breakdowns (today/week/month/total), order metrics, transaction counts, and chart data arrays for daily/monthly trends. GET /api/finance/transactions returns payment transactions list (currently empty but structure validated). GET /api/finance/summary provides quick dashboard overview with today's metrics and recent transactions. Added Financial Dashboard tests to backend_test.py. Total 19/19 tests passed. Complete backend API suite (GPS, Settings, Stock, Employee, Payroll, Finance) fully functional for production use."
+    - agent: "testing"
+      message: "COMPLETED ADMIN PASSWORD & MENU MANAGEMENT API TESTING: All 6 Admin Password and Menu Management endpoints tested successfully and working perfectly. GET /api/admin/passwords returns all admin sections with password status, POST /api/admin/passwords/verify correctly validates both default (kiza2024admin) and custom passwords with proper security behavior, PUT /api/admin/passwords/update successfully updates section passwords with hash storage, GET /api/admin/menu/categories returns 9 menu categories, GET /api/admin/menu returns menu items with proper structure, and POST /api/admin/menu creates new menu items with UUID generation. Password security working correctly - once custom password is set, default password is properly rejected. Added Admin Password & Menu Management tests to backend_test.py. Total 25/25 tests passed. Complete backend API suite (GPS, Settings, Stock, Employee, Payroll, Finance, Admin Password Management, Menu Management) fully functional for production use."

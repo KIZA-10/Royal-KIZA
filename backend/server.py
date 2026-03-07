@@ -197,6 +197,48 @@ class PayrollRecord(BaseModel):
     paid_at: Optional[datetime] = None
     notes: Optional[str] = None
 
+# ============ ADMIN PASSWORD MODELS ============
+class AdminSection(str, Enum):
+    ORDERS = "orders"
+    DRIVERS = "drivers"
+    EMPLOYEES = "employees"
+    FINANCE = "finance"
+    GPS = "gps"
+    SETTINGS = "settings"
+    MENU = "menu"
+
+class AdminPassword(BaseModel):
+    section: AdminSection
+    password_hash: str
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+class PasswordUpdate(BaseModel):
+    section: str
+    new_password: str
+
+class PasswordVerify(BaseModel):
+    section: str
+    password: str
+
+# ============ MENU MANAGEMENT MODELS ============
+class MenuItemCreate(BaseModel):
+    name: str
+    description: str
+    price: float
+    category: str
+    image_base64: Optional[str] = None
+    is_bestseller: bool = False
+    in_stock: bool = True
+
+class MenuItemUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    category: Optional[str] = None
+    image_base64: Optional[str] = None
+    is_bestseller: Optional[bool] = None
+    in_stock: Optional[bool] = None
+
 # Simple password hashing (for production, use bcrypt)
 import hashlib
 def hash_password(password: str) -> str:
@@ -1275,6 +1317,200 @@ async def get_finance_summary():
         },
         "recent_transactions": recent_transactions
     }
+
+# ============ ADMIN PASSWORD MANAGEMENT ROUTES ============
+
+# Default password for all sections
+DEFAULT_ADMIN_PASSWORD = "kiza2024admin"
+
+@api_router.get("/admin/passwords")
+async def get_admin_passwords():
+    """Get all admin section passwords (returns sections with custom passwords set)"""
+    passwords = await db.admin_passwords.find({}).to_list(20)
+    sections_with_password = [p['section'] for p in passwords]
+    
+    all_sections = ["orders", "drivers", "employees", "finance", "gps", "settings", "menu"]
+    result = []
+    for section in all_sections:
+        result.append({
+            "section": section,
+            "has_custom_password": section in sections_with_password
+        })
+    return result
+
+@api_router.post("/admin/passwords/verify")
+async def verify_admin_password(data: PasswordVerify):
+    """Verify password for a specific admin section"""
+    # Check if section has custom password
+    custom_password = await db.admin_passwords.find_one({"section": data.section})
+    
+    if custom_password:
+        # Verify against custom password
+        if verify_password(data.password, custom_password['password_hash']):
+            return {"valid": True, "section": data.section}
+    else:
+        # Verify against default password
+        if data.password == DEFAULT_ADMIN_PASSWORD:
+            return {"valid": True, "section": data.section}
+    
+    raise HTTPException(status_code=401, detail="Invalid password")
+
+@api_router.put("/admin/passwords/update")
+async def update_admin_password(data: PasswordUpdate):
+    """Update password for a specific admin section"""
+    password_hash = hash_password(data.new_password)
+    
+    await db.admin_passwords.update_one(
+        {"section": data.section},
+        {"$set": {
+            "section": data.section,
+            "password_hash": password_hash,
+            "updated_at": datetime.utcnow().isoformat()
+        }},
+        upsert=True
+    )
+    
+    return {"message": f"Password updated for {data.section}", "section": data.section}
+
+@api_router.delete("/admin/passwords/{section}")
+async def reset_admin_password(section: str):
+    """Reset password for a section to default"""
+    await db.admin_passwords.delete_one({"section": section})
+    return {"message": f"Password reset to default for {section}"}
+
+# ============ MENU MANAGEMENT ROUTES ============
+
+@api_router.get("/admin/menu")
+async def get_admin_menu_items():
+    """Get all menu items for admin management"""
+    # Get items from database first
+    db_items = await db.menu_items.find({}).to_list(200)
+    
+    if db_items:
+        for item in db_items:
+            item.pop('_id', None)
+        return db_items
+    
+    # If no items in DB, return from MENU_ITEMS list
+    result = []
+    for item in MENU_ITEMS:
+        result.append({
+            "id": item.id,
+            "name": item.name,
+            "description": item.description,
+            "price": item.price,
+            "category": item.category.value if hasattr(item.category, 'value') else item.category,
+            "image_url": item.image_url,
+            "is_bestseller": item.is_bestseller,
+            "in_stock": item.in_stock
+        })
+    return result
+
+@api_router.post("/admin/menu")
+async def create_menu_item(item: MenuItemCreate):
+    """Create a new menu item"""
+    item_id = str(uuid.uuid4())
+    
+    # Handle image
+    image_url = None
+    if item.image_base64:
+        # Store base64 image or save to file
+        image_url = f"data:image/jpeg;base64,{item.image_base64}" if not item.image_base64.startswith('data:') else item.image_base64
+    
+    new_item = {
+        "id": item_id,
+        "name": item.name,
+        "description": item.description,
+        "price": item.price,
+        "category": item.category,
+        "image_url": image_url,
+        "is_bestseller": item.is_bestseller,
+        "in_stock": item.in_stock,
+        "created_at": datetime.utcnow().isoformat()
+    }
+    
+    await db.menu_items.insert_one(new_item)
+    new_item.pop('_id', None)
+    
+    return new_item
+
+@api_router.put("/admin/menu/{item_id}")
+async def update_menu_item(item_id: str, item: MenuItemUpdate):
+    """Update a menu item"""
+    update_data = {}
+    
+    if item.name is not None:
+        update_data['name'] = item.name
+    if item.description is not None:
+        update_data['description'] = item.description
+    if item.price is not None:
+        update_data['price'] = item.price
+    if item.category is not None:
+        update_data['category'] = item.category
+    if item.is_bestseller is not None:
+        update_data['is_bestseller'] = item.is_bestseller
+    if item.in_stock is not None:
+        update_data['in_stock'] = item.in_stock
+    if item.image_base64 is not None:
+        update_data['image_url'] = f"data:image/jpeg;base64,{item.image_base64}" if not item.image_base64.startswith('data:') else item.image_base64
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    
+    update_data['updated_at'] = datetime.utcnow().isoformat()
+    
+    # Try to update in database
+    result = await db.menu_items.update_one(
+        {"id": item_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        # Item might be from MENU_ITEMS, create it in DB
+        for menu_item in MENU_ITEMS:
+            if menu_item.id == item_id:
+                new_item = {
+                    "id": item_id,
+                    "name": item.name or menu_item.name,
+                    "description": item.description or menu_item.description,
+                    "price": item.price if item.price is not None else menu_item.price,
+                    "category": item.category or (menu_item.category.value if hasattr(menu_item.category, 'value') else menu_item.category),
+                    "image_url": update_data.get('image_url') or menu_item.image_url,
+                    "is_bestseller": item.is_bestseller if item.is_bestseller is not None else menu_item.is_bestseller,
+                    "in_stock": item.in_stock if item.in_stock is not None else menu_item.in_stock,
+                    "created_at": datetime.utcnow().isoformat()
+                }
+                await db.menu_items.insert_one(new_item)
+                new_item.pop('_id', None)
+                return new_item
+        raise HTTPException(status_code=404, detail="Menu item not found")
+    
+    updated_item = await db.menu_items.find_one({"id": item_id})
+    updated_item.pop('_id', None)
+    return updated_item
+
+@api_router.delete("/admin/menu/{item_id}")
+async def delete_menu_item(item_id: str):
+    """Delete a menu item"""
+    result = await db.menu_items.delete_one({"id": item_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Menu item not found")
+    return {"message": "Menu item deleted", "id": item_id}
+
+@api_router.get("/admin/menu/categories")
+async def get_menu_categories():
+    """Get all available menu categories"""
+    return [
+        {"id": "entrees", "name": "Entrées"},
+        {"id": "grillades", "name": "Grillades"},
+        {"id": "burgers", "name": "Burgers"},
+        {"id": "tacos", "name": "Tacos"},
+        {"id": "plats", "name": "Plats"},
+        {"id": "poissons", "name": "Poissons"},
+        {"id": "accompagnements", "name": "Accompagnements"},
+        {"id": "desserts", "name": "Desserts"},
+        {"id": "boissons", "name": "Boissons"}
+    ]
 
 # ============ STRIPE PAYMENT ROUTES ============
 
