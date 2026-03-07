@@ -105,7 +105,7 @@ interface AdminPassword {
 export default function SettingsManagementScreen() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
-  const [activeTab, setActiveTab] = useState<'hours' | 'passwords' | 'menu'>('hours');
+  const [activeTab, setActiveTab] = useState<'hours' | 'stock' | 'passwords' | 'menu'>('hours');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -119,6 +119,10 @@ export default function SettingsManagementScreen() {
     ramadan_closing_hour: '02:00',
     is_open: true,
   });
+  
+  // Stock state
+  const [stockItems, setStockItems] = useState<MenuItem[]>([]);
+  const [stockFilter, setStockFilter] = useState<string>('all');
   
   // Password state
   const [passwords, setPasswords] = useState<AdminPassword[]>([]);
@@ -155,16 +159,18 @@ export default function SettingsManagementScreen() {
   const fetchAllData = useCallback(async () => {
     try {
       setLoading(true);
-      const [settingsRes, passwordsRes, menuRes, categoriesRes] = await Promise.all([
+      const [settingsRes, passwordsRes, menuRes, categoriesRes, stockRes] = await Promise.all([
         api.get('/api/settings'),
         api.get('/api/admin/passwords'),
         api.get('/api/admin/menu'),
         api.get('/api/admin/menu/categories'),
+        api.get('/api/menu/stock'),
       ]);
       setSettings(settingsRes.data);
       setPasswords(passwordsRes.data);
       setMenuItems(menuRes.data);
       setCategories(categoriesRes.data);
+      setStockItems(stockRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -189,6 +195,30 @@ export default function SettingsManagementScreen() {
       setSaving(false);
     }
   };
+
+  // Stock functions
+  const toggleStock = async (item: MenuItem) => {
+    const newStock = !item.in_stock;
+    try {
+      await api.put(`/api/menu/${item.id}/stock`, { in_stock: newStock });
+      setStockItems(prev => 
+        prev.map(i => i.id === item.id ? { ...i, in_stock: newStock } : i)
+      );
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de modifier le stock');
+    }
+  };
+
+  const getStockCategoryName = (cat: string) => {
+    const found = categories.find(c => c.id === cat);
+    return found?.name || cat;
+  };
+
+  const filteredStockItems = stockItems.filter(item => {
+    if (stockFilter === 'all') return true;
+    if (stockFilter === 'out') return !item.in_stock;
+    return item.category === stockFilter;
+  });
 
   // Password functions
   const handleUpdatePassword = async () => {
@@ -425,29 +455,38 @@ export default function SettingsManagementScreen() {
         </View>
 
         {/* Tab Navigation */}
-        <View style={styles.tabNav}>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'hours' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('hours')}
-          >
-            <Ionicons name="time" size={16} color={activeTab === 'hours' ? COLORS.black : COLORS.gold} />
-            <Text style={[styles.tabText, activeTab === 'hours' && styles.tabTextActive]}>Horaires</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'passwords' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('passwords')}
-          >
-            <Ionicons name="key" size={16} color={activeTab === 'passwords' ? COLORS.black : COLORS.gold} />
-            <Text style={[styles.tabText, activeTab === 'passwords' && styles.tabTextActive]}>Mots de passe</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'menu' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('menu')}
-          >
-            <Ionicons name="restaurant" size={16} color={activeTab === 'menu' ? COLORS.black : COLORS.gold} />
-            <Text style={[styles.tabText, activeTab === 'menu' && styles.tabTextActive]}>Menu</Text>
-          </TouchableOpacity>
-        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabNavScroll}>
+          <View style={styles.tabNav}>
+            <TouchableOpacity
+              style={[styles.tabButton, activeTab === 'hours' && styles.tabButtonActive]}
+              onPress={() => setActiveTab('hours')}
+            >
+              <Ionicons name="time" size={14} color={activeTab === 'hours' ? COLORS.black : COLORS.gold} />
+              <Text style={[styles.tabText, activeTab === 'hours' && styles.tabTextActive]}>Horaires</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabButton, activeTab === 'stock' && styles.tabButtonActive]}
+              onPress={() => setActiveTab('stock')}
+            >
+              <Ionicons name="cube" size={14} color={activeTab === 'stock' ? COLORS.black : COLORS.gold} />
+              <Text style={[styles.tabText, activeTab === 'stock' && styles.tabTextActive]}>Stock</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabButton, activeTab === 'passwords' && styles.tabButtonActive]}
+              onPress={() => setActiveTab('passwords')}
+            >
+              <Ionicons name="key" size={14} color={activeTab === 'passwords' ? COLORS.black : COLORS.gold} />
+              <Text style={[styles.tabText, activeTab === 'passwords' && styles.tabTextActive]}>Mots passe</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabButton, activeTab === 'menu' && styles.tabButtonActive]}
+              onPress={() => setActiveTab('menu')}
+            >
+              <Ionicons name="restaurant" size={14} color={activeTab === 'menu' ? COLORS.black : COLORS.gold} />
+              <Text style={[styles.tabText, activeTab === 'menu' && styles.tabTextActive]}>Menu</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
 
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -558,6 +597,86 @@ export default function SettingsManagementScreen() {
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
+              </View>
+            )}
+
+            {activeTab === 'stock' && (
+              /* Stock Tab */
+              <View>
+                {/* Stock Stats */}
+                <View style={styles.stockStatsRow}>
+                  <View style={styles.stockStatCard}>
+                    <Text style={styles.stockStatNumber}>{stockItems.length}</Text>
+                    <Text style={styles.stockStatLabel}>Articles</Text>
+                  </View>
+                  <View style={styles.stockStatCard}>
+                    <Text style={[styles.stockStatNumber, { color: COLORS.success }]}>
+                      {stockItems.filter(i => i.in_stock).length}
+                    </Text>
+                    <Text style={styles.stockStatLabel}>En stock</Text>
+                  </View>
+                  <View style={styles.stockStatCard}>
+                    <Text style={[styles.stockStatNumber, { color: COLORS.error }]}>
+                      {stockItems.filter(i => !i.in_stock).length}
+                    </Text>
+                    <Text style={styles.stockStatLabel}>Rupture</Text>
+                  </View>
+                </View>
+
+                {/* Stock Category Filter */}
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.stockFilterScroll}
+                >
+                  <TouchableOpacity
+                    style={[styles.stockFilterChip, stockFilter === 'all' && styles.stockFilterChipActive]}
+                    onPress={() => setStockFilter('all')}
+                  >
+                    <Text style={[styles.stockFilterChipText, stockFilter === 'all' && styles.stockFilterChipTextActive]}>Tous</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.stockFilterChip, stockFilter === 'out' && styles.stockFilterChipActive, stockFilter === 'out' && { backgroundColor: COLORS.error }]}
+                    onPress={() => setStockFilter('out')}
+                  >
+                    <Text style={[styles.stockFilterChipText, stockFilter === 'out' && styles.stockFilterChipTextActive]}>Ruptures</Text>
+                  </TouchableOpacity>
+                  {categories.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[styles.stockFilterChip, stockFilter === cat.id && styles.stockFilterChipActive]}
+                      onPress={() => setStockFilter(cat.id)}
+                    >
+                      <Text style={[styles.stockFilterChipText, stockFilter === cat.id && styles.stockFilterChipTextActive]}>
+                        {cat.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                {/* Stock Items List */}
+                {filteredStockItems.map((item) => (
+                  <View key={item.id} style={styles.stockCard}>
+                    <View style={styles.stockInfo}>
+                      <Text style={styles.stockName}>{item.name}</Text>
+                      <Text style={styles.stockCategory}>{getStockCategoryName(item.category)}</Text>
+                    </View>
+                    <View style={styles.stockToggle}>
+                      <Text style={[
+                        styles.stockStatus,
+                        { color: item.in_stock ? COLORS.success : COLORS.error }
+                      ]}>
+                        {item.in_stock ? 'En stock' : 'Rupture'}
+                      </Text>
+                      <Switch
+                        value={item.in_stock}
+                        onValueChange={() => toggleStock(item)}
+                        trackColor={{ false: COLORS.error, true: COLORS.success }}
+                        thumbColor={COLORS.white}
+                      />
+                    </View>
+                  </View>
+                ))}
               </View>
             )}
 
@@ -939,4 +1058,21 @@ const styles = StyleSheet.create({
   imageButtons: { marginLeft: 16 },
   imageBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.blackMedium, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginBottom: 8 },
   imageBtnText: { fontSize: 13, color: COLORS.gold, marginLeft: 8 },
+  // Stock Tab Styles
+  tabNavScroll: { flexGrow: 0 },
+  stockStatsRow: { flexDirection: 'row', marginBottom: 16 },
+  stockStatCard: { flex: 1, backgroundColor: COLORS.blackMedium, borderRadius: 12, padding: 14, marginHorizontal: 4, alignItems: 'center' },
+  stockStatNumber: { fontSize: 24, fontWeight: 'bold', color: COLORS.gold },
+  stockStatLabel: { fontSize: 12, color: COLORS.gray, marginTop: 4 },
+  stockFilterScroll: { marginBottom: 16 },
+  stockFilterChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: COLORS.blackMedium, marginRight: 8, borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.3)' },
+  stockFilterChipActive: { backgroundColor: COLORS.gold, borderColor: COLORS.gold },
+  stockFilterChipText: { fontSize: 14, color: COLORS.gold, fontWeight: '500' },
+  stockFilterChipTextActive: { color: COLORS.black },
+  stockCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: COLORS.blackMedium, borderRadius: 12, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.15)' },
+  stockInfo: { flex: 1, marginRight: 12 },
+  stockName: { fontSize: 15, fontWeight: '600', color: COLORS.white },
+  stockCategory: { fontSize: 12, color: COLORS.gray, marginTop: 4 },
+  stockToggle: { flexDirection: 'row', alignItems: 'center' },
+  stockStatus: { fontSize: 12, fontWeight: '600', marginRight: 10 },
 });
