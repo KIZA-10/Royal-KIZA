@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Constants from 'expo-constants';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as Location from 'expo-location';
 
 const COLORS = {
   black: '#0D0D0D',
@@ -107,9 +108,79 @@ export default function App() {
   const [scannedData, setScannedData] = useState<any>(null);
   const [showScannedModal, setShowScannedModal] = useState(false);
 
+  // GPS Tracking state
+  const [locationPermission, setLocationPermission] = useState<boolean>(false);
+  const [isTracking, setIsTracking] = useState<boolean>(false);
+  const [currentLocation, setCurrentLocation] = useState<Location.LocationObject | null>(null);
+  const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
+
   useEffect(() => {
     checkExistingSession();
+    requestLocationPermission();
   }, []);
+
+  // GPS Tracking - Start when logged in
+  useEffect(() => {
+    if (isLoggedIn && driver && locationPermission) {
+      startLocationTracking();
+    }
+    return () => {
+      stopLocationTracking();
+    };
+  }, [isLoggedIn, driver, locationPermission]);
+
+  const requestLocationPermission = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      setLocationPermission(status === 'granted');
+      if (status !== 'granted') {
+        console.log('Location permission denied');
+      }
+    } catch (error) {
+      console.error('Error requesting location permission:', error);
+    }
+  };
+
+  const startLocationTracking = async () => {
+    if (!driver || isTracking) return;
+    
+    try {
+      setIsTracking(true);
+      
+      // Watch position continuously
+      locationSubscriptionRef.current = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 3000, // Update every 3 seconds
+          distanceInterval: 10, // Or when moved 10 meters
+        },
+        async (location) => {
+          setCurrentLocation(location);
+          
+          // Send location to backend
+          try {
+            await api.put(`/api/drivers/${driver.id}/location`, {
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+            });
+          } catch (error) {
+            console.error('Error updating location:', error);
+          }
+        }
+      );
+    } catch (error) {
+      console.error('Error starting location tracking:', error);
+      setIsTracking(false);
+    }
+  };
+
+  const stopLocationTracking = () => {
+    if (locationSubscriptionRef.current) {
+      locationSubscriptionRef.current.remove();
+      locationSubscriptionRef.current = null;
+    }
+    setIsTracking(false);
+  };
 
   const checkExistingSession = async () => {
     try {

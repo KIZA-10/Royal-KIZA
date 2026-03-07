@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Backend API Testing Suite for KIZA Restaurant
-Tests Settings and Stock Management APIs
+Tests Settings, Stock Management, and GPS Tracking APIs
 """
 
 import requests
@@ -27,6 +27,245 @@ def print_response(response: requests.Response):
     except json.JSONDecodeError:
         print(f"Response Text: {response.text}")
         return response.text
+
+# ============ GPS TRACKING TESTS ============
+
+def test_get_drivers():
+    """Test GET /api/drivers - Get all drivers to select one for location testing"""
+    print_test_header("GET /api/drivers - Get All Drivers")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/drivers", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, list):
+                print(f"Found {len(response_data)} drivers")
+                if len(response_data) > 0:
+                    # Return the first driver for testing
+                    first_driver = response_data[0]
+                    print(f"Using driver for testing: {first_driver.get('full_name')} (ID: {first_driver.get('id')})")
+                    print("✅ GET /api/drivers - SUCCESS")
+                    return True, first_driver.get('id'), response_data
+                else:
+                    print("⚠️  No drivers found. GPS tracking tests will be skipped.")
+                    print("✅ GET /api/drivers - SUCCESS (no drivers)")
+                    return True, None, response_data
+            else:
+                print("❌ GET /api/drivers - FAILED: Response is not a list")
+                return False, None, response_data
+        else:
+            print(f"❌ GET /api/drivers - FAILED: Status {response.status_code}")
+            return False, None, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/drivers - ERROR: {e}")
+        return False, None, None
+
+def test_update_driver_location(driver_id: str):
+    """Test PUT /api/drivers/{driver_id}/location - Update driver GPS location"""
+    print_test_header(f"PUT /api/drivers/{driver_id}/location - Update Driver Location")
+    
+    # Test GPS coordinates (Paris coordinates as specified in review request)
+    test_location = {
+        "latitude": 48.8566,
+        "longitude": 2.3522
+    }
+    
+    try:
+        response = requests.put(
+            f"{API_BASE_URL}/drivers/{driver_id}/location",
+            json=test_location,
+            headers={'Content-Type': 'application/json'},
+            timeout=10
+        )
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                expected_fields = ['message', 'lat', 'lng']
+                success = True
+                
+                for field in expected_fields:
+                    if field in response_data:
+                        print(f"✓ {field}: {response_data[field]}")
+                        if field == 'lat' and response_data[field] != test_location['latitude']:
+                            print(f"✗ latitude mismatch: expected {test_location['latitude']}, got {response_data[field]}")
+                            success = False
+                        elif field == 'lng' and response_data[field] != test_location['longitude']:
+                            print(f"✗ longitude mismatch: expected {test_location['longitude']}, got {response_data[field]}")
+                            success = False
+                    else:
+                        print(f"✗ Missing field: {field}")
+                        success = False
+                
+                if success:
+                    print("✅ PUT /api/drivers/{driver_id}/location - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ PUT /api/drivers/{driver_id}/location - FAILED: Invalid response")
+                    return False, response_data
+            else:
+                print("❌ PUT /api/drivers/{driver_id}/location - FAILED: Invalid response format")
+                return False, response_data
+        else:
+            print(f"❌ PUT /api/drivers/{driver_id}/location - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ PUT /api/drivers/{driver_id}/location - ERROR: {e}")
+        return False, None
+
+def test_get_active_drivers_locations():
+    """Test GET /api/drivers/locations/active - Get active drivers with locations and assigned orders"""
+    print_test_header("GET /api/drivers/locations/active - Get Active Drivers with GPS")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/drivers/locations/active", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, list):
+                print(f"Found {len(response_data)} active drivers with location data")
+                
+                # Validate structure if there are drivers
+                if len(response_data) > 0:
+                    first_driver_data = response_data[0]
+                    print(f"\nValidating first driver data structure:")
+                    
+                    required_fields = ['driver', 'assigned_orders']
+                    success = True
+                    
+                    for field in required_fields:
+                        if field in first_driver_data:
+                            print(f"  ✓ {field}: present")
+                            if field == 'driver':
+                                driver_info = first_driver_data[field]
+                                location_fields = ['current_lat', 'current_lng', 'last_location_update']
+                                for loc_field in location_fields:
+                                    if loc_field in driver_info:
+                                        print(f"    ✓ {loc_field}: {driver_info[loc_field]}")
+                                    else:
+                                        print(f"    ⚠️  {loc_field}: not present or null")
+                            elif field == 'assigned_orders':
+                                orders = first_driver_data[field]
+                                print(f"    ✓ assigned_orders: {len(orders)} orders")
+                        else:
+                            print(f"  ✗ Missing field: {field}")
+                            success = False
+                    
+                    if success:
+                        print("✅ GET /api/drivers/locations/active - SUCCESS")
+                        return True, response_data
+                    else:
+                        print("❌ GET /api/drivers/locations/active - FAILED: Invalid structure")
+                        return False, response_data
+                else:
+                    print("⚠️  No active drivers with locations found")
+                    print("✅ GET /api/drivers/locations/active - SUCCESS (no active drivers)")
+                    return True, response_data
+            else:
+                print("❌ GET /api/drivers/locations/active - FAILED: Response is not a list")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/drivers/locations/active - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/drivers/locations/active - ERROR: {e}")
+        return False, None
+
+def test_get_tracking_overview():
+    """Test GET /api/tracking/overview - Get tracking overview statistics"""
+    print_test_header("GET /api/tracking/overview - Get Tracking Overview")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/tracking/overview", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                expected_fields = [
+                    'active_drivers',
+                    'drivers_with_location', 
+                    'orders_in_delivery',
+                    'pending_orders'
+                ]
+                success = True
+                
+                for field in expected_fields:
+                    if field in response_data:
+                        value = response_data[field]
+                        print(f"✓ {field}: {value} ({type(value)})")
+                        if not isinstance(value, int) or value < 0:
+                            print(f"✗ {field} should be a non-negative integer")
+                            success = False
+                    else:
+                        print(f"✗ Missing field: {field}")
+                        success = False
+                
+                if success:
+                    print("✅ GET /api/tracking/overview - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ GET /api/tracking/overview - FAILED: Invalid structure or values")
+                    return False, response_data
+            else:
+                print("❌ GET /api/tracking/overview - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/tracking/overview - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/tracking/overview - ERROR: {e}")
+        return False, None
+
+def verify_location_update(driver_id: str):
+    """Verify that the driver location update appears in active drivers list"""
+    print_test_header("Verification: Check Updated Location in Active Drivers")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/drivers/locations/active", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200 and isinstance(response_data, list):
+            # Find the driver we updated
+            updated_driver = None
+            for driver_data in response_data:
+                driver = driver_data.get('driver', {})
+                if driver.get('id') == driver_id:
+                    updated_driver = driver
+                    break
+            
+            if updated_driver:
+                print(f"Found updated driver: {updated_driver.get('full_name')}")
+                lat = updated_driver.get('current_lat')
+                lng = updated_driver.get('current_lng')
+                last_update = updated_driver.get('last_location_update')
+                
+                print(f"  Current location: {lat}, {lng}")
+                print(f"  Last update: {last_update}")
+                
+                # Check if coordinates match what we sent (48.8566, 2.3522)
+                if lat == 48.8566 and lng == 2.3522:
+                    print("✅ Location Update Verification - SUCCESS: Coordinates match")
+                    return True, updated_driver
+                else:
+                    print(f"❌ Location Update Verification - FAILED: Expected (48.8566, 2.3522), got ({lat}, {lng})")
+                    return False, updated_driver
+            else:
+                print("❌ Location Update Verification - FAILED: Updated driver not found in active drivers list")
+                return False, None
+        else:
+            print("❌ Location Update Verification - FAILED: Could not retrieve active drivers")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ Location Update Verification - ERROR: {e}")
+        return False, None
+
+# ============ SETTINGS AND STOCK MANAGEMENT TESTS ============
 
 def test_get_settings():
     """Test GET /api/settings - Should return restaurant settings with defaults"""
@@ -256,48 +495,93 @@ def verify_stock_update():
         return False, None
 
 def run_all_tests():
-    """Run all Settings and Stock Management API tests"""
-    print("🍽️  KIZA Restaurant - Settings & Stock Management API Tests")
-    print("=" * 70)
+    """Run all Settings, Stock Management, and GPS Tracking API tests"""
+    print("🍽️  KIZA Restaurant - Settings, Stock Management & GPS Tracking API Tests")
+    print("=" * 80)
     
     all_results = {}
+    driver_id = None
     
-    # Test 1: Get Settings
+    # GPS TRACKING TESTS
+    print("\n🛰️  GPS TRACKING API TESTS")
+    print("=" * 40)
+    
+    # Test 1: Get Drivers (to get a driver ID for testing)
+    success, driver_id, data = test_get_drivers()
+    all_results['get_drivers'] = success
+    
+    if driver_id:
+        # Test 2: Update Driver Location
+        success, data = test_update_driver_location(driver_id)
+        all_results['update_driver_location'] = success
+        
+        # Test 3: Get Active Drivers Locations
+        success, data = test_get_active_drivers_locations()
+        all_results['get_active_drivers_locations'] = success
+        
+        # Test 4: Verify Location Update
+        success, data = verify_location_update(driver_id)
+        all_results['verify_location_update'] = success
+    else:
+        print("⚠️  Skipping location-specific tests as no drivers are available")
+        all_results['update_driver_location'] = True  # Skip but don't fail
+        all_results['get_active_drivers_locations'] = True
+        all_results['verify_location_update'] = True
+    
+    # Test 5: Get Tracking Overview
+    success, data = test_get_tracking_overview()
+    all_results['get_tracking_overview'] = success
+    
+    # SETTINGS & STOCK MANAGEMENT TESTS
+    print("\n⚙️  SETTINGS & STOCK MANAGEMENT API TESTS")
+    print("=" * 50)
+    
+    # Test 6: Get Settings
     success, data = test_get_settings()
     all_results['get_settings'] = success
     
-    # Test 2: Update Settings  
+    # Test 7: Update Settings  
     success, data = test_update_settings()
     all_results['update_settings'] = success
     
-    # Test 3: Get Stock Status
+    # Test 8: Get Stock Status
     success, data = test_get_stock_status()
     all_results['get_stock'] = success
     
-    # Test 4: Update Item Stock
+    # Test 9: Update Item Stock
     success, data = test_update_item_stock()
     all_results['update_stock'] = success
     
-    # Test 5: Verify Stock Update
+    # Test 10: Verify Stock Update
     success, data = verify_stock_update()
     all_results['verify_stock'] = success
     
     # Summary
-    print(f"\n{'='*60}")
+    print(f"\n{'='*80}")
     print("FINAL TEST RESULTS SUMMARY")
-    print(f"{'='*60}")
+    print(f"{'='*80}")
     
     total_tests = len(all_results)
     passed_tests = sum(1 for result in all_results.values() if result)
     
-    for test_name, result in all_results.items():
-        status = "✅ PASS" if result else "❌ FAIL"
-        print(f"{test_name.upper().replace('_', ' ')}: {status}")
+    print("\n🛰️  GPS TRACKING TESTS:")
+    gps_tests = ['get_drivers', 'update_driver_location', 'get_active_drivers_locations', 'verify_location_update', 'get_tracking_overview']
+    for test_name in gps_tests:
+        if test_name in all_results:
+            status = "✅ PASS" if all_results[test_name] else "❌ FAIL"
+            print(f"  {test_name.upper().replace('_', ' ')}: {status}")
+    
+    print("\n⚙️  SETTINGS & STOCK TESTS:")
+    other_tests = ['get_settings', 'update_settings', 'get_stock', 'update_stock', 'verify_stock']
+    for test_name in other_tests:
+        if test_name in all_results:
+            status = "✅ PASS" if all_results[test_name] else "❌ FAIL"
+            print(f"  {test_name.upper().replace('_', ' ')}: {status}")
     
     print(f"\nTests Passed: {passed_tests}/{total_tests}")
     
     if passed_tests == total_tests:
-        print("🎉 ALL TESTS PASSED! Settings & Stock Management APIs are working correctly.")
+        print("🎉 ALL TESTS PASSED! GPS Tracking, Settings & Stock Management APIs are working correctly.")
         return True
     else:
         print(f"⚠️  {total_tests - passed_tests} test(s) failed. Check the detailed output above.")

@@ -79,6 +79,10 @@ class Driver(BaseModel):
     total_deliveries: int = 0
     created_at: datetime = Field(default_factory=datetime.utcnow)
     last_login: Optional[datetime] = None
+    # GPS Tracking fields
+    current_lat: Optional[float] = None
+    current_lng: Optional[float] = None
+    last_location_update: Optional[datetime] = None
 
 class DriverCreate(BaseModel):
     username: str
@@ -101,6 +105,13 @@ class DriverResponse(BaseModel):
     total_deliveries: int
     created_at: datetime
     last_login: Optional[datetime]
+    current_lat: Optional[float] = None
+    current_lng: Optional[float] = None
+    last_location_update: Optional[datetime] = None
+
+class LocationUpdate(BaseModel):
+    latitude: float
+    longitude: float
 
 # Simple password hashing (for production, use bcrypt)
 import hashlib
@@ -625,6 +636,84 @@ async def get_driver_stats(driver_id: str):
         "total_deliveries": driver.get('total_deliveries', 0),
         "today_deliveries": today_deliveries,
         "pending_deliveries": pending
+    }
+
+# ============ GPS TRACKING ROUTES ============
+
+@api_router.put("/drivers/{driver_id}/location")
+async def update_driver_location(driver_id: str, location: LocationUpdate):
+    """Update driver's current GPS location"""
+    result = await db.drivers.update_one(
+        {"id": driver_id},
+        {"$set": {
+            "current_lat": location.latitude,
+            "current_lng": location.longitude,
+            "last_location_update": datetime.utcnow().isoformat()
+        }}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    return {"message": "Location updated", "lat": location.latitude, "lng": location.longitude}
+
+@api_router.get("/drivers/locations/active")
+async def get_active_drivers_locations():
+    """Get all active/on_delivery drivers with their locations and assigned orders"""
+    # Get drivers that are active or on delivery
+    drivers = await db.drivers.find({
+        "status": {"$in": ["active", "on_delivery"]},
+        "current_lat": {"$ne": None}
+    }).to_list(100)
+    
+    result = []
+    for driver in drivers:
+        driver.pop('_id', None)
+        driver.pop('password', None)
+        
+        # Get assigned orders for this driver
+        orders = await db.orders.find({
+            "assigned_driver_id": driver['id'],
+            "status": {"$in": ["confirmed", "preparing", "delivering"]}
+        }).to_list(20)
+        
+        for order in orders:
+            order.pop('_id', None)
+        
+        result.append({
+            "driver": driver,
+            "assigned_orders": orders
+        })
+    
+    return result
+
+@api_router.get("/tracking/overview")
+async def get_tracking_overview():
+    """Get overview for tracking dashboard"""
+    # Count active drivers
+    active_drivers = await db.drivers.count_documents({
+        "status": {"$in": ["active", "on_delivery"]}
+    })
+    
+    # Count drivers with location
+    drivers_with_location = await db.drivers.count_documents({
+        "status": {"$in": ["active", "on_delivery"]},
+        "current_lat": {"$ne": None}
+    })
+    
+    # Count orders in delivery
+    orders_in_delivery = await db.orders.count_documents({
+        "status": "delivering"
+    })
+    
+    # Count pending orders
+    pending_orders = await db.orders.count_documents({
+        "status": {"$in": ["confirmed", "preparing"]}
+    })
+    
+    return {
+        "active_drivers": active_drivers,
+        "drivers_with_location": drivers_with_location,
+        "orders_in_delivery": orders_in_delivery,
+        "pending_orders": pending_orders
     }
 
 # ============ STRIPE PAYMENT ROUTES ============

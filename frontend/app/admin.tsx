@@ -244,23 +244,32 @@ export default function AdminScreen() {
             onPress={() => router.push('/orders-management')}
           >
             <LinearGradient colors={['#FF9800', '#E65100']} style={styles.adminNavGradient}>
-              <Ionicons name="receipt" size={20} color="#fff" />
+              <Ionicons name="receipt" size={18} color="#fff" />
               <Text style={styles.adminNavText}>Commandes</Text>
             </LinearGradient>
           </TouchableOpacity>
           <View style={[styles.adminNavButton, styles.adminNavButtonActive]}>
             <LinearGradient colors={[COLORS.gold, COLORS.goldDark]} style={styles.adminNavGradient}>
-              <Ionicons name="people" size={20} color={COLORS.black} />
+              <Ionicons name="people" size={18} color={COLORS.black} />
               <Text style={[styles.adminNavText, { color: COLORS.black }]}>Livreurs</Text>
             </LinearGradient>
           </View>
           <TouchableOpacity
             style={styles.adminNavButton}
+            onPress={() => router.push('/live-tracking')}
+          >
+            <LinearGradient colors={['#9C27B0', '#7B1FA2']} style={styles.adminNavGradient}>
+              <Ionicons name="location" size={18} color="#fff" />
+              <Text style={styles.adminNavText}>GPS</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.adminNavButton}
             onPress={() => router.push('/settings-management')}
           >
             <LinearGradient colors={['#607D8B', '#455A64']} style={styles.adminNavGradient}>
-              <Ionicons name="settings" size={20} color="#fff" />
-              <Text style={styles.adminNavText}>Paramètres</Text>
+              <Ionicons name="settings" size={18} color="#fff" />
+              <Text style={styles.adminNavText}>Param.</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>

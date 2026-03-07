@@ -11,7 +11,9 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.kiza.livreur",
       "infoPlist": {
-        "NSCameraUsageDescription": "Scanner les QR codes des commandes"
+        "NSCameraUsageDescription": "Scanner les QR codes des commandes",
+        "NSLocationWhenInUseUsageDescription": "Partager votre position pour le suivi des livraisons",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Suivi GPS continu pendant les livraisons"
       }
     },
     "android": {
@@ -20,7 +22,12 @@
         "backgroundColor": "#0D0D0D"
       },
       "package": "com.kiza.livreur",
-      "permissions": ["android.permission.CAMERA"]
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.FOREGROUND_SERVICE"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -32,6 +39,12 @@
         "expo-camera",
         {
           "cameraPermission": "Scanner les QR codes"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Suivi GPS pour les livraisons"
         }
       ]
     ],

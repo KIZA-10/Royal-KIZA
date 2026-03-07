@@ -547,7 +547,7 @@ export default function OrdersManagementScreen() {
         <View style={styles.adminNav}>
           <View style={[styles.adminNavButton, styles.adminNavButtonActive]}>
             <LinearGradient colors={['#FF9800', '#E65100']} style={styles.adminNavGradient}>
-              <Ionicons name="receipt" size={18} color="#fff" />
+              <Ionicons name="receipt" size={16} color="#fff" />
               <Text style={[styles.adminNavText, { color: '#fff' }]}>Commandes</Text>
             </LinearGradient>
           </View>
@@ -556,8 +556,17 @@ export default function OrdersManagementScreen() {
             onPress={() => router.push('/admin')}
           >
             <View style={styles.adminNavInactive}>
-              <Ionicons name="people" size={18} color={COLORS.gold} />
+              <Ionicons name="people" size={16} color={COLORS.gold} />
               <Text style={styles.adminNavText}>Livreurs</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.adminNavButton}
+            onPress={() => router.push('/live-tracking')}
+          >
+            <View style={styles.adminNavInactive}>
+              <Ionicons name="location" size={16} color={COLORS.gold} />
+              <Text style={styles.adminNavText}>GPS</Text>
             </View>
           </TouchableOpacity>
           <TouchableOpacity
@@ -565,8 +574,8 @@ export default function OrdersManagementScreen() {
             onPress={() => router.push('/settings-management')}
           >
             <View style={styles.adminNavInactive}>
-              <Ionicons name="settings" size={18} color={COLORS.gold} />
-              <Text style={styles.adminNavText}>Paramètres</Text>
+              <Ionicons name="settings" size={16} color={COLORS.gold} />
+              <Text style={styles.adminNavText}>Param.</Text>
             </View>
           </TouchableOpacity>
         </View>
