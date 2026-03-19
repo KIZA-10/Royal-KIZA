@@ -200,6 +200,15 @@ export default function KizaRestaurant() {
   const [reviewComment, setReviewComment] = useState('');
   const [reviewName, setReviewName] = useState('');
   
+  // Promo & Loyalty State
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<{code: string; discount_percent: number; discount_amount: number; description?: string} | null>(null);
+  const [customerInfo, setCustomerInfo] = useState<{is_premium: boolean; loyalty_discount_unlocked: boolean; total_orders: number; premium_expires_at?: string} | null>(null);
+  const [subscriptionInfo, setSubscriptionInfo] = useState<{price: number; benefits: string[]; loyalty_info: {threshold: number; discount: number}} | null>(null);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [promoError, setPromoError] = useState('');
+  const [discountsLoading, setDiscountsLoading] = useState(false);
+  
   // Delivery Address State
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
     full_name: '',
@@ -313,12 +322,175 @@ export default function KizaRestaurant() {
   };
 
   const getDeliveryFee = () => {
+    // Free delivery for KIZA PREMIUM members
+    if (customerInfo?.is_premium) {
+      const expiresAt = customerInfo.premium_expires_at;
+      if (expiresAt) {
+        const expires = new Date(expiresAt);
+        if (expires > new Date()) {
+          return 0;
+        }
+      }
+    }
+    
     const total = getCartTotal();
     if (restaurantInfo && total >= restaurantInfo.free_delivery_minimum) {
       return 0;
     }
     return restaurantInfo?.delivery_fee || 3.00;
   };
+
+  // Load customer info when phone changes in checkout
+  const loadCustomerInfo = async (phone: string) => {
+    if (!phone || phone.length < 10) return;
+    try {
+      const res = await api.get(`/customer/${phone}?phone=${phone}`);
+      setCustomerInfo(res.data);
+    } catch (error) {
+      console.error('Error loading customer:', error);
+      setCustomerInfo(null);
+    }
+  };
+
+  // Load subscription info on mount
+  const loadSubscriptionInfo = async () => {
+    try {
+      const res = await api.get('/subscription/info');
+      setSubscriptionInfo(res.data);
+    } catch (error) {
+      console.error('Error loading subscription info:', error);
+    }
+  };
+
+  // Validate promo code
+  const validatePromoCode = async () => {
+    if (!promoCode.trim()) {
+      setPromoError('Veuillez entrer un code promo');
+      return;
+    }
+    
+    setDiscountsLoading(true);
+    setPromoError('');
+    
+    try {
+      const res = await api.post(`/promo-codes/validate?code=${promoCode}&order_amount=${getCartTotal()}`);
+      setAppliedPromo({
+        code: res.data.code,
+        discount_percent: res.data.discount_percent,
+        discount_amount: res.data.discount_amount,
+        description: res.data.description,
+      });
+      setPromoError('');
+    } catch (error: any) {
+      setPromoError(error.response?.data?.detail || 'Code promo invalide');
+      setAppliedPromo(null);
+    } finally {
+      setDiscountsLoading(false);
+    }
+  };
+
+  // Remove applied promo
+  const removePromo = () => {
+    setAppliedPromo(null);
+    setPromoCode('');
+    setPromoError('');
+  };
+
+  // Subscribe to KIZA PREMIUM
+  const subscribeToPremium = async () => {
+    if (!deliveryAddress.phone || deliveryAddress.phone.length < 10) {
+      Alert.alert('Erreur', 'Veuillez entrer votre numéro de téléphone dans le formulaire');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      await api.post('/customer/subscribe', {
+        phone: deliveryAddress.phone,
+        full_name: deliveryAddress.full_name || undefined,
+      });
+      
+      // Reload customer info
+      await loadCustomerInfo(deliveryAddress.phone);
+      setShowPremiumModal(false);
+      
+      Alert.alert(
+        'Bienvenue chez KIZA PREMIUM !',
+        'Vous bénéficiez maintenant de la livraison gratuite sur toutes vos commandes pendant 1 mois.',
+        [{ text: 'Super !' }]
+      );
+    } catch (error: any) {
+      Alert.alert('Erreur', error.response?.data?.detail || 'Impossible de souscrire');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate total with discounts
+  const calculateFinalTotal = () => {
+    let subtotal = getCartTotal();
+    let discount = 0;
+    
+    // Apply loyalty discount (15%)
+    if (customerInfo?.loyalty_discount_unlocked) {
+      discount += subtotal * 0.15;
+    }
+    
+    // Apply promo code discount
+    if (appliedPromo) {
+      discount += subtotal * (appliedPromo.discount_percent / 100);
+    }
+    
+    const delivery = getDeliveryFee();
+    return Math.max(0, subtotal - discount) + delivery;
+  };
+
+  // Get all applicable discounts for display
+  const getActiveDiscounts = () => {
+    const discounts: {name: string; amount: number; type: string}[] = [];
+    const subtotal = getCartTotal();
+    
+    // Premium free delivery
+    if (customerInfo?.is_premium && getDeliveryFee() === 0) {
+      discounts.push({
+        name: 'KIZA PREMIUM - Livraison gratuite',
+        amount: restaurantInfo?.delivery_fee || 3.00,
+        type: 'premium'
+      });
+    }
+    
+    // Loyalty discount
+    if (customerInfo?.loyalty_discount_unlocked) {
+      discounts.push({
+        name: 'Fidélité Client -15%',
+        amount: subtotal * 0.15,
+        type: 'loyalty'
+      });
+    }
+    
+    // Promo code
+    if (appliedPromo) {
+      discounts.push({
+        name: `Code: ${appliedPromo.code} -${appliedPromo.discount_percent}%`,
+        amount: appliedPromo.discount_amount,
+        type: 'promo'
+      });
+    }
+    
+    return discounts;
+  };
+
+  // Load subscription info on component mount
+  useEffect(() => {
+    loadSubscriptionInfo();
+  }, []);
+
+  // Load customer info when phone changes
+  useEffect(() => {
+    if (deliveryAddress.phone && deliveryAddress.phone.length >= 10) {
+      loadCustomerInfo(deliveryAddress.phone);
+    }
+  }, [deliveryAddress.phone]);
 
   const placeOrder = async () => {
     if (!deliveryAddress.full_name || !deliveryAddress.phone || !deliveryAddress.address || 
@@ -1054,6 +1226,115 @@ export default function KizaRestaurant() {
           </View>
         </View>
 
+        {/* KIZA PREMIUM Banner */}
+        {!customerInfo?.is_premium && subscriptionInfo && (
+          <TouchableOpacity 
+            style={styles.premiumBanner}
+            onPress={() => setShowPremiumModal(true)}
+          >
+            <LinearGradient
+              colors={['#9C27B0', '#673AB7']}
+              style={styles.premiumBannerGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <View style={styles.premiumBannerContent}>
+                <View style={styles.premiumBannerIcon}>
+                  <MaterialCommunityIcons name="crown" size={28} color={COLORS.gold} />
+                </View>
+                <View style={styles.premiumBannerText}>
+                  <Text style={styles.premiumBannerTitle}>KIZA PREMIUM</Text>
+                  <Text style={styles.premiumBannerSubtitle}>
+                    Livraison GRATUITE illimitée pour {subscriptionInfo.price}€/mois
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={COLORS.white} />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
+        {/* Premium Member Badge */}
+        {customerInfo?.is_premium && (
+          <View style={styles.premiumMemberBadge}>
+            <MaterialCommunityIcons name="crown" size={20} color={COLORS.gold} />
+            <Text style={styles.premiumMemberText}>Membre KIZA PREMIUM</Text>
+            <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+          </View>
+        )}
+
+        {/* Loyalty Progress */}
+        {customerInfo && !customerInfo.loyalty_discount_unlocked && (
+          <View style={styles.loyaltyProgress}>
+            <View style={styles.loyaltyProgressHeader}>
+              <MaterialCommunityIcons name="star-circle" size={20} color={COLORS.gold} />
+              <Text style={styles.loyaltyProgressTitle}>Programme Fidélité</Text>
+            </View>
+            <Text style={styles.loyaltyProgressText}>
+              Encore {Math.max(0, 10 - customerInfo.total_orders)} commande(s) pour débloquer -15% permanent !
+            </Text>
+            <View style={styles.loyaltyProgressBar}>
+              <View 
+                style={[
+                  styles.loyaltyProgressFill, 
+                  { width: `${Math.min(100, (customerInfo.total_orders / 10) * 100)}%` }
+                ]} 
+              />
+            </View>
+            <Text style={styles.loyaltyProgressCount}>{customerInfo.total_orders}/10 commandes</Text>
+          </View>
+        )}
+
+        {/* Loyalty Discount Active */}
+        {customerInfo?.loyalty_discount_unlocked && (
+          <View style={styles.loyaltyActive}>
+            <MaterialCommunityIcons name="star-circle" size={20} color={COLORS.gold} />
+            <Text style={styles.loyaltyActiveText}>Réduction fidélité -15% appliquée !</Text>
+          </View>
+        )}
+
+        {/* Promo Code Section */}
+        <View style={styles.promoCodeSection}>
+          <Text style={styles.promoCodeTitle}>Code Promo</Text>
+          {appliedPromo ? (
+            <View style={styles.promoApplied}>
+              <View style={styles.promoAppliedInfo}>
+                <MaterialCommunityIcons name="ticket-percent" size={20} color={COLORS.success} />
+                <Text style={styles.promoAppliedCode}>{appliedPromo.code}</Text>
+                <Text style={styles.promoAppliedDiscount}>-{appliedPromo.discount_percent}%</Text>
+              </View>
+              <TouchableOpacity onPress={removePromo} style={styles.promoRemoveBtn}>
+                <Ionicons name="close-circle" size={22} color={COLORS.error} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.promoCodeInputRow}>
+              <TextInput
+                style={styles.promoCodeInput}
+                value={promoCode}
+                onChangeText={(t) => { setPromoCode(t.toUpperCase()); setPromoError(''); }}
+                placeholder="Entrez votre code"
+                placeholderTextColor={COLORS.gray}
+                autoCapitalize="characters"
+              />
+              <TouchableOpacity 
+                style={styles.promoCodeApplyBtn}
+                onPress={validatePromoCode}
+                disabled={discountsLoading}
+              >
+                {discountsLoading ? (
+                  <ActivityIndicator size="small" color={COLORS.black} />
+                ) : (
+                  <Text style={styles.promoCodeApplyText}>Appliquer</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+          {promoError ? (
+            <Text style={styles.promoError}>{promoError}</Text>
+          ) : null}
+        </View>
+
         {/* Order Summary */}
         <View style={styles.checkoutSummary}>
           <Text style={styles.checkoutSummaryTitle}>Récapitulatif</Text>
@@ -1063,7 +1344,22 @@ export default function KizaRestaurant() {
               <Text style={styles.checkoutItemPrice}>{(item.price * item.quantity).toFixed(2)}€</Text>
             </View>
           ))}
+          
           <View style={styles.divider} />
+          
+          <View style={styles.checkoutItem}>
+            <Text style={styles.checkoutItemName}>Sous-total</Text>
+            <Text style={styles.checkoutItemPrice}>{getCartTotal().toFixed(2)}€</Text>
+          </View>
+          
+          {/* Active Discounts */}
+          {getActiveDiscounts().map((discount, idx) => (
+            <View key={idx} style={styles.checkoutDiscount}>
+              <Text style={styles.checkoutDiscountName}>{discount.name}</Text>
+              <Text style={styles.checkoutDiscountAmount}>-{discount.amount.toFixed(2)}€</Text>
+            </View>
+          ))}
+          
           <View style={styles.checkoutItem}>
             <Text style={styles.checkoutItemName}>Livraison</Text>
             <Text style={[
@@ -1073,10 +1369,11 @@ export default function KizaRestaurant() {
               {getDeliveryFee() === 0 ? 'GRATUITE' : `${getDeliveryFee().toFixed(2)}€`}
             </Text>
           </View>
+          
           <View style={styles.checkoutTotal}>
             <Text style={styles.checkoutTotalLabel}>Total à payer</Text>
             <Text style={styles.checkoutTotalValue}>
-              {(getCartTotal() + getDeliveryFee()).toFixed(2)}€
+              {calculateFinalTotal().toFixed(2)}€
             </Text>
           </View>
         </View>
@@ -1411,6 +1708,98 @@ export default function KizaRestaurant() {
     </Modal>
   );
 
+  // KIZA PREMIUM Subscription Modal
+  const renderPremiumModal = () => (
+    <Modal
+      visible={showPremiumModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowPremiumModal(false)}
+    >
+      <View style={styles.premiumModalOverlay}>
+        <View style={styles.premiumModalContent}>
+          <TouchableOpacity
+            style={styles.premiumModalClose}
+            onPress={() => setShowPremiumModal(false)}
+          >
+            <Ionicons name="close" size={28} color={COLORS.white} />
+          </TouchableOpacity>
+          
+          <LinearGradient
+            colors={['#9C27B0', '#673AB7']}
+            style={styles.premiumModalHeader}
+          >
+            <MaterialCommunityIcons name="crown" size={56} color={COLORS.gold} />
+            <Text style={styles.premiumModalTitle}>KIZA PREMIUM</Text>
+            <Text style={styles.premiumModalPrice}>
+              {subscriptionInfo?.price || 9.99}€<Text style={styles.premiumModalPricePeriod}>/mois</Text>
+            </Text>
+          </LinearGradient>
+          
+          <View style={styles.premiumModalBody}>
+            <Text style={styles.premiumModalBenefitsTitle}>Avantages inclus :</Text>
+            
+            <View style={styles.premiumModalBenefit}>
+              <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
+              <Text style={styles.premiumModalBenefitText}>Livraison GRATUITE illimitée</Text>
+            </View>
+            
+            <View style={styles.premiumModalBenefit}>
+              <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
+              <Text style={styles.premiumModalBenefitText}>Économisez 3€ par commande</Text>
+            </View>
+            
+            <View style={styles.premiumModalBenefit}>
+              <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
+              <Text style={styles.premiumModalBenefitText}>Accès aux offres exclusives</Text>
+            </View>
+            
+            <View style={styles.premiumModalBenefit}>
+              <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
+              <Text style={styles.premiumModalBenefitText}>Sans engagement - Annulez quand vous voulez</Text>
+            </View>
+            
+            <View style={styles.premiumModalDivider} />
+            
+            <View style={styles.premiumModalLoyaltyInfo}>
+              <MaterialCommunityIcons name="star-circle" size={24} color={COLORS.gold} />
+              <View style={styles.premiumModalLoyaltyText}>
+                <Text style={styles.premiumModalLoyaltyTitle}>Programme Fidélité</Text>
+                <Text style={styles.premiumModalLoyaltyDesc}>
+                  {subscriptionInfo?.loyalty_info?.discount || 15}% de réduction permanente après {subscriptionInfo?.loyalty_info?.threshold || 10} commandes
+                </Text>
+              </View>
+            </View>
+            
+            <TouchableOpacity
+              style={styles.premiumSubscribeButton}
+              onPress={subscribeToPremium}
+              disabled={loading}
+            >
+              <LinearGradient
+                colors={[COLORS.gold, COLORS.goldDark]}
+                style={styles.premiumSubscribeGradient}
+              >
+                {loading ? (
+                  <ActivityIndicator color={COLORS.black} />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="crown" size={22} color={COLORS.black} />
+                    <Text style={styles.premiumSubscribeText}>Devenir PREMIUM</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+            
+            <Text style={styles.premiumModalDisclaimer}>
+              En souscrivant, vous acceptez les conditions d'utilisation
+            </Text>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   // Chatbot Modal
   const renderChatbotModal = () => (
     <Modal
@@ -1596,6 +1985,7 @@ export default function KizaRestaurant() {
         
         {currentScreen !== 'order_success' && currentScreen !== 'checkout' && renderBottomNav()}
         {renderItemModal()}
+        {renderPremiumModal()}
         {renderChatbotModal()}
         {renderReviewModal()}
         {currentScreen !== 'order_success' && currentScreen !== 'checkout' && renderFloatingChatButton()}
@@ -3320,5 +3710,331 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.gray,
     textDecorationLine: 'underline',
+  },
+  
+  // Promo & Premium Styles
+  premiumBanner: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  premiumBannerGradient: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  premiumBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  premiumBannerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  premiumBannerText: {
+    flex: 1,
+  },
+  premiumBannerTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.white,
+  },
+  premiumBannerSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 2,
+  },
+  premiumMemberBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(156, 39, 176, 0.2)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#9C27B0',
+  },
+  premiumMemberText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#9C27B0',
+    marginHorizontal: 8,
+  },
+  loyaltyProgress: {
+    backgroundColor: COLORS.blackMedium,
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.2)',
+  },
+  loyaltyProgressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  loyaltyProgressTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.gold,
+    marginLeft: 8,
+  },
+  loyaltyProgressText: {
+    fontSize: 13,
+    color: COLORS.gray,
+    marginBottom: 12,
+  },
+  loyaltyProgressBar: {
+    height: 8,
+    backgroundColor: 'rgba(212,175,55,0.2)',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  loyaltyProgressFill: {
+    height: '100%',
+    backgroundColor: COLORS.gold,
+    borderRadius: 4,
+  },
+  loyaltyProgressCount: {
+    fontSize: 12,
+    color: COLORS.gray,
+    textAlign: 'right',
+    marginTop: 6,
+  },
+  loyaltyActive: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(76,175,80,0.15)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.success,
+  },
+  loyaltyActiveText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.success,
+    marginLeft: 8,
+  },
+  promoCodeSection: {
+    backgroundColor: COLORS.blackMedium,
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.2)',
+  },
+  promoCodeTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.gold,
+    marginBottom: 12,
+  },
+  promoCodeInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  promoCodeInput: {
+    flex: 1,
+    backgroundColor: COLORS.black,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: COLORS.white,
+    fontSize: 15,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.2)',
+  },
+  promoCodeApplyBtn: {
+    backgroundColor: COLORS.gold,
+    borderRadius: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  promoCodeApplyText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.black,
+  },
+  promoApplied: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(76,175,80,0.1)',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: COLORS.success,
+  },
+  promoAppliedInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  promoAppliedCode: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.success,
+    marginLeft: 8,
+  },
+  promoAppliedDiscount: {
+    fontSize: 13,
+    color: COLORS.success,
+    marginLeft: 10,
+    backgroundColor: 'rgba(76,175,80,0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  promoRemoveBtn: {
+    padding: 4,
+  },
+  promoError: {
+    fontSize: 12,
+    color: COLORS.error,
+    marginTop: 8,
+  },
+  checkoutDiscount: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  checkoutDiscountName: {
+    fontSize: 13,
+    color: COLORS.success,
+  },
+  checkoutDiscountAmount: {
+    fontSize: 13,
+    color: COLORS.success,
+    fontWeight: '600',
+  },
+  
+  // Premium Modal Styles
+  premiumModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  premiumModalContent: {
+    width: width - 32,
+    maxHeight: height * 0.85,
+    backgroundColor: COLORS.blackLight,
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  premiumModalClose: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 10,
+    padding: 4,
+  },
+  premiumModalHeader: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+  },
+  premiumModalTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: COLORS.white,
+    marginTop: 12,
+  },
+  premiumModalPrice: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: COLORS.gold,
+    marginTop: 8,
+  },
+  premiumModalPricePeriod: {
+    fontSize: 16,
+    fontWeight: 'normal',
+    color: COLORS.goldLight,
+  },
+  premiumModalBody: {
+    padding: 24,
+  },
+  premiumModalBenefitsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.white,
+    marginBottom: 16,
+  },
+  premiumModalBenefit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  premiumModalBenefitText: {
+    fontSize: 14,
+    color: COLORS.white,
+    marginLeft: 12,
+    flex: 1,
+  },
+  premiumModalDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginVertical: 20,
+  },
+  premiumModalLoyaltyInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(212,175,55,0.1)',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
+  },
+  premiumModalLoyaltyText: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  premiumModalLoyaltyTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.gold,
+  },
+  premiumModalLoyaltyDesc: {
+    fontSize: 12,
+    color: COLORS.gray,
+    marginTop: 2,
+  },
+  premiumSubscribeButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  premiumSubscribeGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+  },
+  premiumSubscribeText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.black,
+    marginLeft: 10,
+  },
+  premiumModalDisclaimer: {
+    fontSize: 11,
+    color: COLORS.gray,
+    textAlign: 'center',
   },
 });
