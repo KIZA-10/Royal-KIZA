@@ -239,6 +239,74 @@ class MenuItemUpdate(BaseModel):
     is_bestseller: Optional[bool] = None
     in_stock: Optional[bool] = None
 
+# ============ SUBSCRIPTION & LOYALTY MODELS ============
+class SubscriptionStatus(str, Enum):
+    ACTIVE = "active"
+    EXPIRED = "expired"
+    CANCELLED = "cancelled"
+
+class Customer(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    phone: str  # Unique identifier
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+    total_orders: int = 0
+    is_premium: bool = False
+    premium_expires_at: Optional[datetime] = None
+    loyalty_discount_unlocked: bool = False  # True after 10 orders
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class SubscriptionCreate(BaseModel):
+    phone: str
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+
+class PromoCodeStatus(str, Enum):
+    ACTIVE = "active"
+    EXPIRED = "expired"
+    DISABLED = "disabled"
+
+class PromoCode(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    code: str  # e.g., "KIZA20"
+    discount_percent: float  # e.g., 20 for 20%
+    description: Optional[str] = None
+    min_order_amount: float = 0  # Minimum order to apply
+    max_uses: Optional[int] = None  # None = unlimited
+    current_uses: int = 0
+    status: PromoCodeStatus = PromoCodeStatus.ACTIVE
+    valid_from: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class PromoCodeCreate(BaseModel):
+    code: str
+    discount_percent: float
+    description: Optional[str] = None
+    min_order_amount: float = 0
+    max_uses: Optional[int] = None
+    valid_until: Optional[str] = None
+
+class ProductPromotion(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    discount_percent: float
+    applies_to: str  # "all", "category", "product"
+    category_id: Optional[str] = None  # If applies_to = "category"
+    product_ids: Optional[List[str]] = None  # If applies_to = "product"
+    is_active: bool = True
+    valid_from: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class ProductPromotionCreate(BaseModel):
+    name: str
+    discount_percent: float
+    applies_to: str
+    category_id: Optional[str] = None
+    product_ids: Optional[List[str]] = None
+    valid_until: Optional[str] = None
+
 # Simple password hashing (for production, use bcrypt)
 import hashlib
 def hash_password(password: str) -> str:
@@ -1511,6 +1579,366 @@ async def get_menu_categories():
         {"id": "desserts", "name": "Desserts"},
         {"id": "boissons", "name": "Boissons"}
     ]
+
+# ============ CUSTOMER & SUBSCRIPTION ROUTES ============
+
+PREMIUM_PRICE = 9.99
+LOYALTY_THRESHOLD = 10  # Orders needed for loyalty discount
+LOYALTY_DISCOUNT = 15  # 15% discount
+
+@api_router.get("/customer/{phone}")
+async def get_customer(phone: str):
+    """Get or create customer by phone"""
+    customer = await db.customers.find_one({"phone": phone})
+    if not customer:
+        # Create new customer
+        customer = {
+            "id": str(uuid.uuid4()),
+            "phone": phone,
+            "email": None,
+            "full_name": None,
+            "total_orders": 0,
+            "is_premium": False,
+            "premium_expires_at": None,
+            "loyalty_discount_unlocked": False,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        await db.customers.insert_one(customer)
+    customer.pop('_id', None)
+    
+    # Check if premium expired
+    if customer.get('is_premium') and customer.get('premium_expires_at'):
+        expires = datetime.fromisoformat(customer['premium_expires_at'].replace('Z', ''))
+        if expires < datetime.utcnow():
+            await db.customers.update_one(
+                {"phone": phone},
+                {"$set": {"is_premium": False}}
+            )
+            customer['is_premium'] = False
+    
+    return customer
+
+@api_router.post("/customer/subscribe")
+async def subscribe_premium(data: SubscriptionCreate):
+    """Subscribe customer to KIZA PREMIUM"""
+    customer = await db.customers.find_one({"phone": data.phone})
+    
+    expires_at = datetime.utcnow() + timedelta(days=30)
+    
+    if customer:
+        await db.customers.update_one(
+            {"phone": data.phone},
+            {"$set": {
+                "is_premium": True,
+                "premium_expires_at": expires_at.isoformat(),
+                "email": data.email or customer.get('email'),
+                "full_name": data.full_name or customer.get('full_name')
+            }}
+        )
+    else:
+        customer = {
+            "id": str(uuid.uuid4()),
+            "phone": data.phone,
+            "email": data.email,
+            "full_name": data.full_name,
+            "total_orders": 0,
+            "is_premium": True,
+            "premium_expires_at": expires_at.isoformat(),
+            "loyalty_discount_unlocked": False,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        await db.customers.insert_one(customer)
+    
+    return {
+        "message": "Subscription activated",
+        "expires_at": expires_at.isoformat(),
+        "price": PREMIUM_PRICE,
+        "benefit": "Livraison gratuite"
+    }
+
+@api_router.post("/customer/increment-orders")
+async def increment_customer_orders(phone: str):
+    """Increment customer order count and check loyalty"""
+    customer = await db.customers.find_one({"phone": phone})
+    if not customer:
+        customer = {
+            "id": str(uuid.uuid4()),
+            "phone": phone,
+            "total_orders": 1,
+            "is_premium": False,
+            "loyalty_discount_unlocked": False,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        await db.customers.insert_one(customer)
+        return {"total_orders": 1, "loyalty_unlocked": False}
+    
+    new_count = customer.get('total_orders', 0) + 1
+    loyalty_unlocked = new_count >= LOYALTY_THRESHOLD
+    
+    await db.customers.update_one(
+        {"phone": phone},
+        {"$set": {
+            "total_orders": new_count,
+            "loyalty_discount_unlocked": loyalty_unlocked
+        }}
+    )
+    
+    return {
+        "total_orders": new_count,
+        "loyalty_unlocked": loyalty_unlocked,
+        "loyalty_discount": LOYALTY_DISCOUNT if loyalty_unlocked else 0
+    }
+
+@api_router.get("/subscription/info")
+async def get_subscription_info():
+    """Get subscription info for display"""
+    return {
+        "name": "KIZA PREMIUM",
+        "price": PREMIUM_PRICE,
+        "benefits": [
+            "Livraison GRATUITE sur toutes les commandes",
+            "Accès prioritaire aux nouvelles offres",
+            "Support client prioritaire"
+        ],
+        "loyalty_info": {
+            "threshold": LOYALTY_THRESHOLD,
+            "discount": LOYALTY_DISCOUNT,
+            "description": f"{LOYALTY_DISCOUNT}% de réduction permanente après {LOYALTY_THRESHOLD} commandes"
+        }
+    }
+
+# ============ PROMO CODES ROUTES ============
+
+@api_router.get("/admin/promo-codes")
+async def get_promo_codes():
+    """Get all promo codes"""
+    codes = await db.promo_codes.find({}).to_list(100)
+    for code in codes:
+        code.pop('_id', None)
+    return codes
+
+@api_router.post("/admin/promo-codes")
+async def create_promo_code(promo: PromoCodeCreate):
+    """Create a new promo code"""
+    # Check if code already exists
+    existing = await db.promo_codes.find_one({"code": promo.code.upper()})
+    if existing:
+        raise HTTPException(status_code=400, detail="Code already exists")
+    
+    code_dict = {
+        "id": str(uuid.uuid4()),
+        "code": promo.code.upper(),
+        "discount_percent": promo.discount_percent,
+        "description": promo.description,
+        "min_order_amount": promo.min_order_amount,
+        "max_uses": promo.max_uses,
+        "current_uses": 0,
+        "status": "active",
+        "valid_from": datetime.utcnow().isoformat(),
+        "valid_until": promo.valid_until,
+        "created_at": datetime.utcnow().isoformat()
+    }
+    
+    await db.promo_codes.insert_one(code_dict)
+    code_dict.pop('_id', None)
+    return code_dict
+
+@api_router.delete("/admin/promo-codes/{code_id}")
+async def delete_promo_code(code_id: str):
+    """Delete a promo code"""
+    result = await db.promo_codes.delete_one({"id": code_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Promo code not found")
+    return {"message": "Promo code deleted"}
+
+@api_router.put("/admin/promo-codes/{code_id}/toggle")
+async def toggle_promo_code(code_id: str):
+    """Toggle promo code status"""
+    code = await db.promo_codes.find_one({"id": code_id})
+    if not code:
+        raise HTTPException(status_code=404, detail="Promo code not found")
+    
+    new_status = "disabled" if code['status'] == "active" else "active"
+    await db.promo_codes.update_one(
+        {"id": code_id},
+        {"$set": {"status": new_status}}
+    )
+    return {"status": new_status}
+
+@api_router.post("/promo-codes/validate")
+async def validate_promo_code(code: str, order_amount: float):
+    """Validate a promo code for customer use"""
+    promo = await db.promo_codes.find_one({"code": code.upper()})
+    
+    if not promo:
+        raise HTTPException(status_code=404, detail="Code promo invalide")
+    
+    if promo['status'] != 'active':
+        raise HTTPException(status_code=400, detail="Code promo expiré ou désactivé")
+    
+    if promo.get('max_uses') and promo['current_uses'] >= promo['max_uses']:
+        raise HTTPException(status_code=400, detail="Code promo épuisé")
+    
+    if promo.get('valid_until'):
+        valid_until = datetime.fromisoformat(promo['valid_until'].replace('Z', ''))
+        if valid_until < datetime.utcnow():
+            raise HTTPException(status_code=400, detail="Code promo expiré")
+    
+    if order_amount < promo.get('min_order_amount', 0):
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Minimum de commande requis: {promo['min_order_amount']}€"
+        )
+    
+    discount_amount = order_amount * (promo['discount_percent'] / 100)
+    
+    return {
+        "valid": True,
+        "code": promo['code'],
+        "discount_percent": promo['discount_percent'],
+        "discount_amount": round(discount_amount, 2),
+        "description": promo.get('description')
+    }
+
+@api_router.post("/promo-codes/use")
+async def use_promo_code(code: str):
+    """Mark a promo code as used"""
+    await db.promo_codes.update_one(
+        {"code": code.upper()},
+        {"$inc": {"current_uses": 1}}
+    )
+    return {"message": "Promo code used"}
+
+# ============ PRODUCT PROMOTIONS ROUTES ============
+
+@api_router.get("/admin/promotions")
+async def get_product_promotions():
+    """Get all product promotions"""
+    promos = await db.product_promotions.find({}).to_list(100)
+    for promo in promos:
+        promo.pop('_id', None)
+    return promos
+
+@api_router.post("/admin/promotions")
+async def create_product_promotion(promo: ProductPromotionCreate):
+    """Create a new product promotion"""
+    promo_dict = {
+        "id": str(uuid.uuid4()),
+        "name": promo.name,
+        "discount_percent": promo.discount_percent,
+        "applies_to": promo.applies_to,
+        "category_id": promo.category_id,
+        "product_ids": promo.product_ids,
+        "is_active": True,
+        "valid_from": datetime.utcnow().isoformat(),
+        "valid_until": promo.valid_until,
+        "created_at": datetime.utcnow().isoformat()
+    }
+    
+    await db.product_promotions.insert_one(promo_dict)
+    promo_dict.pop('_id', None)
+    return promo_dict
+
+@api_router.delete("/admin/promotions/{promo_id}")
+async def delete_product_promotion(promo_id: str):
+    """Delete a product promotion"""
+    result = await db.product_promotions.delete_one({"id": promo_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Promotion not found")
+    return {"message": "Promotion deleted"}
+
+@api_router.put("/admin/promotions/{promo_id}/toggle")
+async def toggle_product_promotion(promo_id: str):
+    """Toggle promotion status"""
+    promo = await db.product_promotions.find_one({"id": promo_id})
+    if not promo:
+        raise HTTPException(status_code=404, detail="Promotion not found")
+    
+    new_status = not promo['is_active']
+    await db.product_promotions.update_one(
+        {"id": promo_id},
+        {"$set": {"is_active": new_status}}
+    )
+    return {"is_active": new_status}
+
+@api_router.get("/promotions/active")
+async def get_active_promotions():
+    """Get all active promotions for customers"""
+    promos = await db.product_promotions.find({"is_active": True}).to_list(50)
+    for promo in promos:
+        promo.pop('_id', None)
+        # Check expiration
+        if promo.get('valid_until'):
+            valid_until = datetime.fromisoformat(promo['valid_until'].replace('Z', ''))
+            if valid_until < datetime.utcnow():
+                await db.product_promotions.update_one(
+                    {"id": promo['id']},
+                    {"$set": {"is_active": False}}
+                )
+                promos.remove(promo)
+    return promos
+
+@api_router.get("/calculate-discounts")
+async def calculate_order_discounts(
+    phone: str,
+    subtotal: float,
+    promo_code: str = None
+):
+    """Calculate all applicable discounts for an order"""
+    discounts = []
+    total_discount = 0
+    free_delivery = False
+    
+    # Get customer info
+    customer = await db.customers.find_one({"phone": phone})
+    
+    # 1. Check KIZA PREMIUM (free delivery)
+    if customer and customer.get('is_premium'):
+        expires = customer.get('premium_expires_at')
+        if expires:
+            expires_dt = datetime.fromisoformat(expires.replace('Z', ''))
+            if expires_dt > datetime.utcnow():
+                free_delivery = True
+                discounts.append({
+                    "type": "premium",
+                    "name": "KIZA PREMIUM",
+                    "description": "Livraison gratuite",
+                    "amount": 3.00  # Delivery fee
+                })
+    
+    # 2. Check loyalty discount (15% after 10 orders)
+    if customer and customer.get('loyalty_discount_unlocked'):
+        loyalty_discount = subtotal * (LOYALTY_DISCOUNT / 100)
+        total_discount += loyalty_discount
+        discounts.append({
+            "type": "loyalty",
+            "name": "Fidélité Client",
+            "description": f"-{LOYALTY_DISCOUNT}% (client fidèle)",
+            "percent": LOYALTY_DISCOUNT,
+            "amount": round(loyalty_discount, 2)
+        })
+    
+    # 3. Check promo code
+    if promo_code:
+        promo = await db.promo_codes.find_one({"code": promo_code.upper(), "status": "active"})
+        if promo and subtotal >= promo.get('min_order_amount', 0):
+            promo_discount = subtotal * (promo['discount_percent'] / 100)
+            total_discount += promo_discount
+            discounts.append({
+                "type": "promo_code",
+                "name": f"Code: {promo['code']}",
+                "description": promo.get('description', f"-{promo['discount_percent']}%"),
+                "percent": promo['discount_percent'],
+                "amount": round(promo_discount, 2)
+            })
+    
+    return {
+        "subtotal": subtotal,
+        "discounts": discounts,
+        "total_discount": round(total_discount, 2),
+        "free_delivery": free_delivery,
+        "final_total": round(subtotal - total_discount, 2)
+    }
 
 # ============ STRIPE PAYMENT ROUTES ============
 

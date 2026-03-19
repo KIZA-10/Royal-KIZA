@@ -265,20 +265,11 @@ export default function AdminScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.adminNavButton}
-            onPress={() => router.push('/finance-dashboard')}
+            onPress={() => router.push('/promotions-management')}
           >
-            <LinearGradient colors={['#2196F3', '#1565C0']} style={styles.adminNavGradient}>
-              <Ionicons name="stats-chart" size={14} color="#fff" />
-              <Text style={[styles.adminNavText, { fontSize: 9 }]}>Finances</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.adminNavButton}
-            onPress={() => router.push('/live-tracking')}
-          >
-            <LinearGradient colors={['#9C27B0', '#7B1FA2']} style={styles.adminNavGradient}>
-              <Ionicons name="location" size={14} color="#fff" />
-              <Text style={[styles.adminNavText, { fontSize: 9 }]}>GPS</Text>
+            <LinearGradient colors={['#E91E63', '#C2185B']} style={styles.adminNavGradient}>
+              <Ionicons name="pricetag" size={14} color="#fff" />
+              <Text style={[styles.adminNavText, { fontSize: 9 }]}>Promos</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity
@@ -291,6 +282,24 @@ export default function AdminScreen() {
             </LinearGradient>
           </TouchableOpacity>
         </View>
+
+        {/* Quick Access Row */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: 12, marginBottom: 12 }}>
+          <TouchableOpacity
+            style={[styles.quickAccessBtn]}
+            onPress={() => router.push('/finance-dashboard')}
+          >
+            <Ionicons name="stats-chart" size={16} color="#2196F3" />
+            <Text style={[styles.quickAccessText, { color: '#2196F3' }]}>Finances</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.quickAccessBtn]}
+            onPress={() => router.push('/live-tracking')}
+          >
+            <Ionicons name="location" size={16} color="#9C27B0" />
+            <Text style={[styles.quickAccessText, { color: '#9C27B0' }]}>GPS</Text>
+          </TouchableOpacity>
+        </ScrollView>
 
         {/* Stats */}
         <View style={styles.statsRow}>
