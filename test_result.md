@@ -508,7 +508,177 @@ test_plan:
           agent: "testing"
           comment: "API endpoint POST /api/admin/menu tested successfully. Creates new menu items with all required fields: name, description, price, category, is_bestseller, in_stock. Generates UUID for new items, stores in database correctly, and returns created item with timestamp. Menu item creation working perfectly."
 
+  - task: "Promo Codes Admin API - List All"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint GET /api/admin/promo-codes tested successfully. Returns all promo codes with proper structure including id, code, discount_percent, status, current_uses, created_at. Handles empty list correctly. Promo code listing working perfectly."
+
+  - task: "Promo Codes Admin API - Create New"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint POST /api/admin/promo-codes tested successfully. Creates promo code 'KIZA10' with 10% discount, minimum order €15, test description. Generates UUID, sets default status 'active', tracks usage count (0), stores correctly in database. All validation fields working correctly."
+
+  - task: "Promo Codes Admin API - Toggle Status"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint PUT /api/admin/promo-codes/{code_id}/toggle tested successfully. Toggles promo code status from 'active' to 'disabled' and returns new status. Status management working correctly for admin control."
+
+  - task: "Promo Codes Admin API - Delete Code"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint DELETE /api/admin/promo-codes/{code_id} tested successfully. Deletes promo code from database and returns confirmation message. Promo code deletion working correctly."
+
+  - task: "Customer Promo Code Validation API"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint POST /api/promo-codes/validate tested successfully. Validates KIZA10 code with €20 order amount, returns valid=true, calculates correct discount_amount (€2.00 for 10% discount), includes discount_percent and description. All validation logic working correctly."
+
+  - task: "Customer Promo Code Usage API"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint POST /api/promo-codes/use tested successfully. Marks promo code KIZA10 as used, increments usage counter in database. Returns success message. Promo code usage tracking working correctly."
+
+  - task: "Product Promotions Admin API - List All"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint GET /api/admin/promotions tested successfully. Returns all product promotions with proper structure including id, name, discount_percent, applies_to, is_active, created_at. Handles existing promotions correctly. Product promotion listing working perfectly."
+
+  - task: "Product Promotions Admin API - Create New"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint POST /api/admin/promotions tested successfully. Creates 'Promo Grillades' with 15% discount for category 'grillades', generates UUID, sets is_active=true, stores with proper timestamps. Product promotion creation working perfectly."
+
+  - task: "Product Promotions Customer API - Get Active"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint GET /api/promotions/active tested successfully. Returns only active promotions (is_active=true) with proper filtering. Found 2 active 'Promo Grillades' promotions with correct structure. Active promotion filtering working correctly."
+
+  - task: "Customer Management API - Get or Create"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint GET /api/customer/{phone} tested successfully. Gets existing customer for phone 0612345678, returns complete customer profile with id, phone, total_orders (1), is_premium (true), loyalty status (false), creation timestamp. Customer retrieval working correctly."
+
+  - task: "Subscription Management API - Subscribe Premium"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint POST /api/customer/subscribe tested successfully. Subscribes customer 'Test User' (0612345678) to KIZA PREMIUM, sets 30-day expiration, returns activation message, price (€9.99), benefit (Livraison gratuite). Premium subscription working correctly."
+
+  - task: "Customer Loyalty API - Increment Orders"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint POST /api/customer/increment-orders tested successfully. Increments customer order count to 2, checks loyalty threshold (10 orders needed), returns loyalty_unlocked=false, loyalty_discount=0. Order tracking for loyalty program working correctly."
+
+  - task: "Subscription Info API - Get Pricing"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint GET /api/subscription/info tested successfully. Returns KIZA PREMIUM pricing (€9.99), benefits list (free delivery, priority access, priority support), loyalty_info with threshold (10), discount (15%), description. Subscription information display working correctly."
+
+  - task: "Discount Calculation API - Calculate All"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint GET /api/calculate-discounts tested successfully. For phone 0612345678, subtotal €50, promo KIZA10: calculated 2 discounts (KIZA PREMIUM free delivery €3.00, promo code 10% €5.00), total_discount €5.00, free_delivery=true, final_total €45.00. Complete discount calculation system working perfectly."
+
 agent_communication:
+    - agent: "main"
+      message: "Implementing Promotions, Loyalty & Subscription feature. Backend APIs already exist. Now adding frontend integration: promo code input in checkout, discount display, KIZA PREMIUM subscription option. Need to test: GET /api/admin/promo-codes, POST /api/admin/promo-codes, POST /api/promo-codes/validate, GET /api/calculate-discounts, GET /api/customer/{phone}, POST /api/subscribe, GET /api/admin/promotions"
     - agent: "testing"
       message: "All backend API endpoints tested successfully. Created comprehensive backend_test.py file and executed full test suite. All 7 tests passed including restaurant info retrieval, menu operations, category filtering, and order management. Backend is fully functional and ready for production use. MongoDB integration working correctly for order persistence."
     - agent: "main"
@@ -525,3 +695,5 @@ agent_communication:
       message: "COMPLETED FINANCIAL DASHBOARD API TESTING: All 3 Financial Dashboard endpoints tested successfully and working perfectly. GET /api/finance/stats returns comprehensive financial statistics with revenue breakdowns (today/week/month/total), order metrics, transaction counts, and chart data arrays for daily/monthly trends. GET /api/finance/transactions returns payment transactions list (currently empty but structure validated). GET /api/finance/summary provides quick dashboard overview with today's metrics and recent transactions. Added Financial Dashboard tests to backend_test.py. Total 19/19 tests passed. Complete backend API suite (GPS, Settings, Stock, Employee, Payroll, Finance) fully functional for production use."
     - agent: "testing"
       message: "COMPLETED ADMIN PASSWORD & MENU MANAGEMENT API TESTING: All 6 Admin Password and Menu Management endpoints tested successfully and working perfectly. GET /api/admin/passwords returns all admin sections with password status, POST /api/admin/passwords/verify correctly validates both default (kiza2024admin) and custom passwords with proper security behavior, PUT /api/admin/passwords/update successfully updates section passwords with hash storage, GET /api/admin/menu/categories returns 9 menu categories, GET /api/admin/menu returns menu items with proper structure, and POST /api/admin/menu creates new menu items with UUID generation. Password security working correctly - once custom password is set, default password is properly rejected. Added Admin Password & Menu Management tests to backend_test.py. Total 25/25 tests passed. Complete backend API suite (GPS, Settings, Stock, Employee, Payroll, Finance, Admin Password Management, Menu Management) fully functional for production use."
+    - agent: "testing"
+      message: "COMPLETED PROMOTIONS, LOYALTY & SUBSCRIPTION API TESTING: All 14 Promotional API endpoints tested successfully and working perfectly. PROMO CODES: GET /api/admin/promo-codes lists all codes, POST /api/admin/promo-codes creates KIZA10 (10% discount, €15 minimum), POST /api/promo-codes/validate validates codes correctly (€2 discount for €20 order), POST /api/promo-codes/use marks codes as used, PUT /api/admin/promo-codes/{id}/toggle toggles status, DELETE /api/admin/promo-codes/{id} removes codes. PRODUCT PROMOTIONS: GET /api/admin/promotions lists promotions, POST /api/admin/promotions creates 'Promo Grillades' (15% category discount), GET /api/promotions/active returns active promotions only. CUSTOMER & LOYALTY: GET /api/customer/{phone} gets/creates customers, POST /api/customer/subscribe activates KIZA PREMIUM (€9.99, free delivery), POST /api/customer/increment-orders tracks loyalty progress, GET /api/subscription/info returns pricing/benefits, GET /api/calculate-discounts combines all discounts (Premium + Promo: €5 total discount, €45 final from €50). Complete promotional system fully functional for production use. Total backend API tests: 39/39 passed."

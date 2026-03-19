@@ -1407,6 +1407,842 @@ def run_all_tests():
         print(f"⚠️  {total_tests - total_passed} test(s) failed. Check the detailed output above.")
         return False
 
+# ============ PROMOTIONS, LOYALTY & SUBSCRIPTION TESTS ============
+
+def test_get_admin_promo_codes():
+    """Test GET /api/admin/promo-codes - Get all promo codes"""
+    print_test_header("GET /api/admin/promo-codes - Get All Promo Codes")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/admin/promo-codes", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, list):
+                print(f"Found {len(response_data)} promo codes")
+                
+                # Validate structure if there are promo codes
+                if len(response_data) > 0:
+                    first_code = response_data[0]
+                    required_fields = ['id', 'code', 'discount_percent', 'status', 'current_uses', 'created_at']
+                    success = True
+                    
+                    for field in required_fields:
+                        if field in first_code:
+                            print(f"  ✓ {field}: {first_code[field]} ({type(first_code[field])})")
+                        else:
+                            print(f"  ✗ Missing field: {field}")
+                            success = False
+                    
+                    if success:
+                        print("✅ GET /api/admin/promo-codes - SUCCESS")
+                        return True, response_data
+                    else:
+                        print("❌ GET /api/admin/promo-codes - FAILED: Invalid structure")
+                        return False, response_data
+                else:
+                    print("✅ GET /api/admin/promo-codes - SUCCESS (empty list)")
+                    return True, response_data
+            else:
+                print("❌ GET /api/admin/promo-codes - FAILED: Response is not a list")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/admin/promo-codes - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/admin/promo-codes - ERROR: {e}")
+        return False, None
+
+def test_create_promo_code():
+    """Test POST /api/admin/promo-codes - Create a new promo code"""
+    print_test_header("POST /api/admin/promo-codes - Create New Promo Code")
+    
+    # Test data as specified in the review request
+    promo_data = {
+        "code": "KIZA10",
+        "discount_percent": 10,
+        "description": "Test promo",
+        "min_order_amount": 15
+    }
+    
+    try:
+        response = requests.post(
+            f"{API_BASE_URL}/admin/promo-codes",
+            json=promo_data,
+            headers={'Content-Type': 'application/json'},
+            timeout=10
+        )
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                # Validate required fields
+                expected_fields = ['id', 'code', 'discount_percent', 'description', 'min_order_amount', 'status', 'current_uses', 'created_at']
+                success = True
+                
+                for field in expected_fields:
+                    if field in response_data:
+                        value = response_data[field]
+                        print(f"✓ {field}: {value}")
+                        
+                        # Validate specific field values
+                        if field == 'code' and value != promo_data['code']:
+                            print(f"✗ {field} mismatch: expected {promo_data[field]}, got {value}")
+                            success = False
+                        elif field == 'discount_percent' and value != promo_data['discount_percent']:
+                            print(f"✗ {field} mismatch: expected {promo_data[field]}, got {value}")
+                            success = False
+                        elif field == 'status' and value != 'active':
+                            print(f"✗ Default status should be 'active', got {value}")
+                            success = False
+                        elif field == 'current_uses' and value != 0:
+                            print(f"✗ Default current_uses should be 0, got {value}")
+                            success = False
+                    else:
+                        print(f"✗ Missing field: {field}")
+                        success = False
+                
+                if success:
+                    print("✅ POST /api/admin/promo-codes - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ POST /api/admin/promo-codes - FAILED: Invalid response data")
+                    return False, response_data
+            else:
+                print("❌ POST /api/admin/promo-codes - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ POST /api/admin/promo-codes - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ POST /api/admin/promo-codes - ERROR: {e}")
+        return False, None
+
+def test_toggle_promo_code(code_id: str):
+    """Test PUT /api/admin/promo-codes/{code_id}/toggle - Toggle promo code status"""
+    print_test_header(f"PUT /api/admin/promo-codes/{code_id}/toggle - Toggle Promo Code Status")
+    
+    try:
+        response = requests.put(f"{API_BASE_URL}/admin/promo-codes/{code_id}/toggle", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict) and 'status' in response_data:
+                new_status = response_data['status']
+                if new_status in ['active', 'disabled']:
+                    print(f"✅ PUT /api/admin/promo-codes/{code_id}/toggle - SUCCESS: Status changed to {new_status}")
+                    return True, response_data
+                else:
+                    print(f"❌ PUT /api/admin/promo-codes/{code_id}/toggle - FAILED: Invalid status {new_status}")
+                    return False, response_data
+            else:
+                print("❌ PUT /api/admin/promo-codes/{code_id}/toggle - FAILED: Invalid response format")
+                return False, response_data
+        else:
+            print(f"❌ PUT /api/admin/promo-codes/{code_id}/toggle - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ PUT /api/admin/promo-codes/{code_id}/toggle - ERROR: {e}")
+        return False, None
+
+def test_delete_promo_code(code_id: str):
+    """Test DELETE /api/admin/promo-codes/{code_id} - Delete promo code"""
+    print_test_header(f"DELETE /api/admin/promo-codes/{code_id} - Delete Promo Code")
+    
+    try:
+        response = requests.delete(f"{API_BASE_URL}/admin/promo-codes/{code_id}", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict) and 'message' in response_data:
+                if 'deleted' in response_data['message'].lower():
+                    print(f"✅ DELETE /api/admin/promo-codes/{code_id} - SUCCESS: Promo code deleted")
+                    return True, response_data
+                else:
+                    print(f"❌ DELETE /api/admin/promo-codes/{code_id} - FAILED: Invalid message")
+                    return False, response_data
+            else:
+                print("❌ DELETE /api/admin/promo-codes/{code_id} - FAILED: Invalid response format")
+                return False, response_data
+        else:
+            print(f"❌ DELETE /api/admin/promo-codes/{code_id} - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ DELETE /api/admin/promo-codes/{code_id} - ERROR: {e}")
+        return False, None
+
+def test_validate_promo_code():
+    """Test POST /api/promo-codes/validate?code=KIZA10&order_amount=20 - Validate promo code"""
+    print_test_header("POST /api/promo-codes/validate - Validate Promo Code")
+    
+    # Test with code KIZA10 and order amount 20 as specified
+    code = "KIZA10"
+    order_amount = 20.0
+    
+    try:
+        response = requests.post(
+            f"{API_BASE_URL}/promo-codes/validate?code={code}&order_amount={order_amount}",
+            timeout=10
+        )
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                expected_fields = ['valid', 'code', 'discount_percent', 'discount_amount']
+                success = True
+                
+                for field in expected_fields:
+                    if field in response_data:
+                        value = response_data[field]
+                        print(f"✓ {field}: {value}")
+                        
+                        if field == 'valid' and value != True:
+                            print(f"✗ Code should be valid for order amount {order_amount}")
+                            success = False
+                        elif field == 'code' and value != code:
+                            print(f"✗ Code mismatch: expected {code}, got {value}")
+                            success = False
+                        elif field == 'discount_percent' and not isinstance(value, (int, float)):
+                            print(f"✗ discount_percent should be numeric, got {type(value)}")
+                            success = False
+                        elif field == 'discount_amount' and not isinstance(value, (int, float)):
+                            print(f"✗ discount_amount should be numeric, got {type(value)}")
+                            success = False
+                    else:
+                        print(f"✗ Missing field: {field}")
+                        success = False
+                
+                if success:
+                    print("✅ POST /api/promo-codes/validate - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ POST /api/promo-codes/validate - FAILED: Invalid response structure")
+                    return False, response_data
+            else:
+                print("❌ POST /api/promo-codes/validate - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ POST /api/promo-codes/validate - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ POST /api/promo-codes/validate - ERROR: {e}")
+        return False, None
+
+def test_use_promo_code():
+    """Test POST /api/promo-codes/use?code=KIZA10 - Mark promo code as used"""
+    print_test_header("POST /api/promo-codes/use - Mark Promo Code as Used")
+    
+    code = "KIZA10"
+    
+    try:
+        response = requests.post(f"{API_BASE_URL}/promo-codes/use?code={code}", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict) and 'message' in response_data:
+                if 'used' in response_data['message'].lower():
+                    print("✅ POST /api/promo-codes/use - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ POST /api/promo-codes/use - FAILED: Invalid message")
+                    return False, response_data
+            else:
+                print("❌ POST /api/promo-codes/use - FAILED: Invalid response format")
+                return False, response_data
+        else:
+            print(f"❌ POST /api/promo-codes/use - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ POST /api/promo-codes/use - ERROR: {e}")
+        return False, None
+
+def test_get_admin_promotions():
+    """Test GET /api/admin/promotions - Get all product promotions"""
+    print_test_header("GET /api/admin/promotions - Get All Product Promotions")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/admin/promotions", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, list):
+                print(f"Found {len(response_data)} product promotions")
+                
+                # Validate structure if there are promotions
+                if len(response_data) > 0:
+                    first_promo = response_data[0]
+                    required_fields = ['id', 'name', 'discount_percent', 'applies_to', 'is_active', 'created_at']
+                    success = True
+                    
+                    for field in required_fields:
+                        if field in first_promo:
+                            print(f"  ✓ {field}: {first_promo[field]} ({type(first_promo[field])})")
+                        else:
+                            print(f"  ✗ Missing field: {field}")
+                            success = False
+                    
+                    if success:
+                        print("✅ GET /api/admin/promotions - SUCCESS")
+                        return True, response_data
+                    else:
+                        print("❌ GET /api/admin/promotions - FAILED: Invalid structure")
+                        return False, response_data
+                else:
+                    print("✅ GET /api/admin/promotions - SUCCESS (empty list)")
+                    return True, response_data
+            else:
+                print("❌ GET /api/admin/promotions - FAILED: Response is not a list")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/admin/promotions - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/admin/promotions - ERROR: {e}")
+        return False, None
+
+def test_create_product_promotion():
+    """Test POST /api/admin/promotions - Create product promotion"""
+    print_test_header("POST /api/admin/promotions - Create Product Promotion")
+    
+    # Test data as specified in the review request
+    promo_data = {
+        "name": "Promo Grillades",
+        "discount_percent": 15,
+        "applies_to": "category",
+        "category_id": "grillades"
+    }
+    
+    try:
+        response = requests.post(
+            f"{API_BASE_URL}/admin/promotions",
+            json=promo_data,
+            headers={'Content-Type': 'application/json'},
+            timeout=10
+        )
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                # Validate required fields
+                expected_fields = ['id', 'name', 'discount_percent', 'applies_to', 'category_id', 'is_active', 'created_at']
+                success = True
+                
+                for field in expected_fields:
+                    if field in response_data:
+                        value = response_data[field]
+                        print(f"✓ {field}: {value}")
+                        
+                        # Validate specific field values
+                        if field == 'name' and value != promo_data['name']:
+                            print(f"✗ {field} mismatch: expected {promo_data[field]}, got {value}")
+                            success = False
+                        elif field == 'discount_percent' and value != promo_data['discount_percent']:
+                            print(f"✗ {field} mismatch: expected {promo_data[field]}, got {value}")
+                            success = False
+                        elif field == 'is_active' and value != True:
+                            print(f"✗ Default is_active should be True, got {value}")
+                            success = False
+                    else:
+                        print(f"✗ Missing field: {field}")
+                        success = False
+                
+                if success:
+                    print("✅ POST /api/admin/promotions - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ POST /api/admin/promotions - FAILED: Invalid response data")
+                    return False, response_data
+            else:
+                print("❌ POST /api/admin/promotions - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ POST /api/admin/promotions - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ POST /api/admin/promotions - ERROR: {e}")
+        return False, None
+
+def test_get_active_promotions():
+    """Test GET /api/promotions/active - Get active promotions for customers"""
+    print_test_header("GET /api/promotions/active - Get Active Promotions")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/promotions/active", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, list):
+                print(f"Found {len(response_data)} active promotions")
+                
+                # Validate structure if there are active promotions
+                if len(response_data) > 0:
+                    first_promo = response_data[0]
+                    required_fields = ['id', 'name', 'discount_percent', 'applies_to', 'is_active']
+                    success = True
+                    
+                    for field in required_fields:
+                        if field in first_promo:
+                            value = first_promo[field]
+                            print(f"  ✓ {field}: {value} ({type(value)})")
+                            
+                            # Ensure is_active is True for active promotions
+                            if field == 'is_active' and value != True:
+                                print(f"  ✗ Active promotion should have is_active=True, got {value}")
+                                success = False
+                        else:
+                            print(f"  ✗ Missing field: {field}")
+                            success = False
+                    
+                    if success:
+                        print("✅ GET /api/promotions/active - SUCCESS")
+                        return True, response_data
+                    else:
+                        print("❌ GET /api/promotions/active - FAILED: Invalid structure")
+                        return False, response_data
+                else:
+                    print("✅ GET /api/promotions/active - SUCCESS (no active promotions)")
+                    return True, response_data
+            else:
+                print("❌ GET /api/promotions/active - FAILED: Response is not a list")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/promotions/active - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/promotions/active - ERROR: {e}")
+        return False, None
+
+def test_get_customer():
+    """Test GET /api/customer/{phone}?phone=0612345678 - Get or create customer"""
+    print_test_header("GET /api/customer/{phone} - Get or Create Customer")
+    
+    phone = "0612345678"
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/customer/{phone}?phone={phone}", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                expected_fields = ['id', 'phone', 'total_orders', 'is_premium', 'loyalty_discount_unlocked', 'created_at']
+                success = True
+                
+                for field in expected_fields:
+                    if field in response_data:
+                        value = response_data[field]
+                        print(f"✓ {field}: {value} ({type(value)})")
+                        
+                        # Validate specific field types
+                        if field == 'phone' and value != phone:
+                            print(f"✗ Phone mismatch: expected {phone}, got {value}")
+                            success = False
+                        elif field == 'total_orders' and not isinstance(value, int):
+                            print(f"✗ total_orders should be integer, got {type(value)}")
+                            success = False
+                        elif field == 'is_premium' and not isinstance(value, bool):
+                            print(f"✗ is_premium should be boolean, got {type(value)}")
+                            success = False
+                    else:
+                        print(f"✗ Missing field: {field}")
+                        success = False
+                
+                if success:
+                    print("✅ GET /api/customer/{phone} - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ GET /api/customer/{phone} - FAILED: Invalid response structure")
+                    return False, response_data
+            else:
+                print("❌ GET /api/customer/{phone} - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/customer/{phone} - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/customer/{phone} - ERROR: {e}")
+        return False, None
+
+def test_subscribe_premium():
+    """Test POST /api/subscribe - Subscribe to premium"""
+    print_test_header("POST /api/subscribe - Subscribe to KIZA PREMIUM")
+    
+    # Test data as specified in the review request
+    subscription_data = {
+        "phone": "0612345678",
+        "full_name": "Test User"
+    }
+    
+    try:
+        response = requests.post(
+            f"{API_BASE_URL}/customer/subscribe",
+            json=subscription_data,
+            headers={'Content-Type': 'application/json'},
+            timeout=10
+        )
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                expected_fields = ['message', 'expires_at', 'price', 'benefit']
+                success = True
+                
+                for field in expected_fields:
+                    if field in response_data:
+                        value = response_data[field]
+                        print(f"✓ {field}: {value}")
+                        
+                        # Validate specific field values
+                        if field == 'message' and 'activated' not in value.lower():
+                            print(f"✗ Expected activation message, got {value}")
+                            success = False
+                        elif field == 'price' and not isinstance(value, (int, float)):
+                            print(f"✗ price should be numeric, got {type(value)}")
+                            success = False
+                        elif field == 'benefit' and 'gratuite' not in value.lower():
+                            print(f"✗ Expected free delivery benefit, got {value}")
+                            success = False
+                    else:
+                        print(f"✗ Missing field: {field}")
+                        success = False
+                
+                if success:
+                    print("✅ POST /api/subscribe - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ POST /api/subscribe - FAILED: Invalid response structure")
+                    return False, response_data
+            else:
+                print("❌ POST /api/subscribe - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ POST /api/subscribe - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ POST /api/subscribe - ERROR: {e}")
+        return False, None
+
+def test_increment_customer_orders():
+    """Test POST /api/customer/order?phone=0612345678 - Increment customer order count"""
+    print_test_header("POST /api/customer/order - Increment Order Count for Loyalty")
+    
+    phone = "0612345678"
+    
+    try:
+        response = requests.post(f"{API_BASE_URL}/customer/increment-orders?phone={phone}", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                expected_fields = ['total_orders', 'loyalty_unlocked']
+                success = True
+                
+                for field in expected_fields:
+                    if field in response_data:
+                        value = response_data[field]
+                        print(f"✓ {field}: {value} ({type(value)})")
+                        
+                        # Validate specific field types
+                        if field == 'total_orders' and not isinstance(value, int):
+                            print(f"✗ total_orders should be integer, got {type(value)}")
+                            success = False
+                        elif field == 'loyalty_unlocked' and not isinstance(value, bool):
+                            print(f"✗ loyalty_unlocked should be boolean, got {type(value)}")
+                            success = False
+                    else:
+                        print(f"✗ Missing field: {field}")
+                        success = False
+                
+                # Check for loyalty_discount field if loyalty is unlocked
+                if response_data.get('loyalty_unlocked', False):
+                    if 'loyalty_discount' in response_data:
+                        print(f"✓ loyalty_discount: {response_data['loyalty_discount']}%")
+                    
+                if success:
+                    print("✅ POST /api/customer/order - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ POST /api/customer/order - FAILED: Invalid response structure")
+                    return False, response_data
+            else:
+                print("❌ POST /api/customer/order - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ POST /api/customer/order - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ POST /api/customer/order - ERROR: {e}")
+        return False, None
+
+def test_get_subscription_info():
+    """Test GET /api/subscription/info - Get subscription pricing info"""
+    print_test_header("GET /api/subscription/info - Get Subscription Info")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/subscription/info", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                expected_fields = ['price', 'benefits', 'loyalty_info']
+                success = True
+                
+                for field in expected_fields:
+                    if field in response_data:
+                        value = response_data[field]
+                        print(f"✓ {field}: present")
+                        
+                        if field == 'price' and not isinstance(value, (int, float)):
+                            print(f"  ✗ price should be numeric, got {type(value)}")
+                            success = False
+                        elif field == 'benefits' and not isinstance(value, list):
+                            print(f"  ✗ benefits should be a list, got {type(value)}")
+                            success = False
+                        elif field == 'loyalty_info' and not isinstance(value, dict):
+                            print(f"  ✗ loyalty_info should be a dict, got {type(value)}")
+                            success = False
+                        else:
+                            if field == 'loyalty_info':
+                                loyalty_fields = ['threshold', 'discount', 'description']
+                                for lfield in loyalty_fields:
+                                    if lfield in value:
+                                        print(f"    ✓ {lfield}: {value[lfield]}")
+                                    else:
+                                        print(f"    ✗ Missing loyalty field: {lfield}")
+                                        success = False
+                            else:
+                                print(f"  ✓ {field}: {value}")
+                    else:
+                        print(f"✗ Missing field: {field}")
+                        success = False
+                
+                if success:
+                    print("✅ GET /api/subscription/info - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ GET /api/subscription/info - FAILED: Invalid structure")
+                    return False, response_data
+            else:
+                print("❌ GET /api/subscription/info - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/subscription/info - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/subscription/info - ERROR: {e}")
+        return False, None
+
+def test_calculate_discounts():
+    """Test GET /api/calculate-discounts?phone=0612345678&subtotal=50&promo_code=KIZA10 - Calculate all discounts"""
+    print_test_header("GET /api/calculate-discounts - Calculate All Applicable Discounts")
+    
+    # Test parameters as specified in the review request
+    phone = "0612345678"
+    subtotal = 50.0
+    promo_code = "KIZA10"
+    
+    try:
+        response = requests.get(
+            f"{API_BASE_URL}/calculate-discounts?phone={phone}&subtotal={subtotal}&promo_code={promo_code}",
+            timeout=10
+        )
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                expected_fields = ['subtotal', 'discounts', 'total_discount', 'free_delivery', 'final_total']
+                success = True
+                
+                for field in expected_fields:
+                    if field in response_data:
+                        value = response_data[field]
+                        print(f"✓ {field}: {value} ({type(value)})")
+                        
+                        # Validate specific field types and values
+                        if field == 'subtotal' and value != subtotal:
+                            print(f"✗ Subtotal mismatch: expected {subtotal}, got {value}")
+                            success = False
+                        elif field == 'discounts' and not isinstance(value, list):
+                            print(f"✗ discounts should be a list, got {type(value)}")
+                            success = False
+                        elif field in ['total_discount', 'final_total'] and not isinstance(value, (int, float)):
+                            print(f"✗ {field} should be numeric, got {type(value)}")
+                            success = False
+                        elif field == 'free_delivery' and not isinstance(value, bool):
+                            print(f"✗ free_delivery should be boolean, got {type(value)}")
+                            success = False
+                        
+                        # Validate discount entries if present
+                        if field == 'discounts' and isinstance(value, list) and len(value) > 0:
+                            print(f"  Found {len(value)} discount(s):")
+                            for i, discount in enumerate(value):
+                                if isinstance(discount, dict):
+                                    discount_fields = ['type', 'name', 'amount']
+                                    for dfield in discount_fields:
+                                        if dfield in discount:
+                                            print(f"    Discount {i+1} {dfield}: {discount[dfield]}")
+                                        else:
+                                            print(f"    ✗ Missing discount field: {dfield}")
+                                            success = False
+                    else:
+                        print(f"✗ Missing field: {field}")
+                        success = False
+                
+                if success:
+                    print("✅ GET /api/calculate-discounts - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ GET /api/calculate-discounts - FAILED: Invalid structure")
+                    return False, response_data
+            else:
+                print("❌ GET /api/calculate-discounts - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/calculate-discounts - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/calculate-discounts - ERROR: {e}")
+        return False, None
+
+def run_promotions_loyalty_tests():
+    """Run all Promotions, Loyalty & Subscription API tests"""
+    print("\n🎟️  PROMOTIONS, LOYALTY & SUBSCRIPTION API TESTS")
+    print("=" * 60)
+    
+    promo_results = {}
+    promo_code_id = None
+    
+    # Test 1: Get admin promo codes (initially empty)
+    success, data = test_get_admin_promo_codes()
+    promo_results['get_admin_promo_codes'] = success
+    
+    # Test 2: Create promo code KIZA10
+    success, promo_data = test_create_promo_code()
+    promo_results['create_promo_code'] = success
+    
+    if success and promo_data:
+        promo_code_id = promo_data.get('id')
+    
+    # Test 3: Validate promo code with order amount 20
+    success, data = test_validate_promo_code()
+    promo_results['validate_promo_code'] = success
+    
+    # Test 4: Use promo code
+    success, data = test_use_promo_code()
+    promo_results['use_promo_code'] = success
+    
+    # Test 5: Get admin promotions 
+    success, data = test_get_admin_promotions()
+    promo_results['get_admin_promotions'] = success
+    
+    # Test 6: Create product promotion
+    success, data = test_create_product_promotion()
+    promo_results['create_product_promotion'] = success
+    
+    # Test 7: Get active promotions
+    success, data = test_get_active_promotions()
+    promo_results['get_active_promotions'] = success
+    
+    # Test 8: Get or create customer
+    success, data = test_get_customer()
+    promo_results['get_customer'] = success
+    
+    # Test 9: Subscribe to premium
+    success, data = test_subscribe_premium()
+    promo_results['subscribe_premium'] = success
+    
+    # Test 10: Increment customer orders for loyalty
+    success, data = test_increment_customer_orders()
+    promo_results['increment_customer_orders'] = success
+    
+    # Test 11: Get subscription info
+    success, data = test_get_subscription_info()
+    promo_results['get_subscription_info'] = success
+    
+    # Test 12: Calculate all discounts
+    success, data = test_calculate_discounts()
+    promo_results['calculate_discounts'] = success
+    
+    # Optional tests if we have promo code ID
+    if promo_code_id:
+        # Test 13: Toggle promo code status
+        success, data = test_toggle_promo_code(promo_code_id)
+        promo_results['toggle_promo_code'] = success
+        
+        # Test 14: Delete promo code (cleanup)
+        success, data = test_delete_promo_code(promo_code_id)
+        promo_results['delete_promo_code'] = success
+    else:
+        print("⚠️  Skipping toggle and delete promo code tests - no promo code ID available")
+        promo_results['toggle_promo_code'] = True  # Skip but don't fail
+        promo_results['delete_promo_code'] = True  # Skip but don't fail
+    
+    # Summary
+    print(f"\n{'='*60}")
+    print("PROMOTIONS, LOYALTY & SUBSCRIPTION TEST RESULTS")
+    print(f"{'='*60}")
+    
+    total_promo_tests = len(promo_results)
+    passed_promo_tests = sum(1 for result in promo_results.values() if result)
+    
+    print("\n🎟️  PROMO CODE TESTS:")
+    promo_code_tests = ['get_admin_promo_codes', 'create_promo_code', 'validate_promo_code', 'use_promo_code', 'toggle_promo_code', 'delete_promo_code']
+    for test_name in promo_code_tests:
+        if test_name in promo_results:
+            status = "✅ PASS" if promo_results[test_name] else "❌ FAIL"
+            print(f"  {test_name.upper().replace('_', ' ')}: {status}")
+    
+    print("\n🏷️  PRODUCT PROMOTION TESTS:")
+    promotion_tests = ['get_admin_promotions', 'create_product_promotion', 'get_active_promotions']
+    for test_name in promotion_tests:
+        if test_name in promo_results:
+            status = "✅ PASS" if promo_results[test_name] else "❌ FAIL"
+            print(f"  {test_name.upper().replace('_', ' ')}: {status}")
+    
+    print("\n👤 CUSTOMER & LOYALTY TESTS:")
+    customer_tests = ['get_customer', 'subscribe_premium', 'increment_customer_orders', 'get_subscription_info', 'calculate_discounts']
+    for test_name in customer_tests:
+        if test_name in promo_results:
+            status = "✅ PASS" if promo_results[test_name] else "❌ FAIL"
+            print(f"  {test_name.upper().replace('_', ' ')}: {status}")
+    
+    print(f"\nPromotion Tests Passed: {passed_promo_tests}/{total_promo_tests}")
+    
+    return promo_results
+
 if __name__ == "__main__":
+    # Run existing tests first
+    print("🍽️  KIZA Restaurant - Running Existing Backend API Tests")
     success = run_all_tests()
-    exit(0 if success else 1)
+    
+    # Run new promotional tests
+    print("\n\n" + "="*80)
+    print("🎟️  KIZA Restaurant - Running Promotional & Subscription API Tests")
+    print("="*80)
+    promo_results = run_promotions_loyalty_tests()
+    
+    # Overall results
+    promo_success = all(promo_results.values())
+    overall_success = success and promo_success
+    
+    print(f"\n{'='*80}")
+    print("🎉 OVERALL TEST RESULTS SUMMARY")
+    print(f"{'='*80}")
+    print(f"Existing Backend Tests: {'✅ PASS' if success else '❌ FAIL'}")
+    print(f"Promotional API Tests: {'✅ PASS' if promo_success else '❌ FAIL'}")
+    print(f"Overall Result: {'✅ ALL TESTS PASSED' if overall_success else '❌ SOME TESTS FAILED'}")
+    
+    exit(0 if overall_success else 1)
