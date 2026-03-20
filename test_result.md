@@ -333,6 +333,77 @@ backend:
           agent: "testing"
           comment: "API endpoint GET /api/finance/summary tested successfully. Returns quick finance summary with today's metrics (revenue: €0, orders: 0) and recent transactions array (currently empty). Response structure validated with proper data types. Provides concise dashboard overview as intended."
 frontend:
+  - task: "KIZA PREMIUM Subscription Banner"
+    implemented: true
+    working: true
+    file: "app/index.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "KIZA PREMIUM banner successfully implemented and tested. Purple gradient banner with crown icon displays correctly on checkout screen. Shows 'Livraison GRATUITE illimitée pour 9.99€/mois' message. Clicking banner opens premium subscription modal with benefits and 'Devenir PREMIUM' button. Modal can be closed properly. Feature is mobile responsive and integrates well with the dark theme."
+
+  - task: "Loyalty Progress System"
+    implemented: true
+    working: true
+    file: "app/index.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "Loyalty progress system successfully implemented and tested. After entering phone number, loyalty progress section appears showing 'Programme Fidélité' with progress bar and 'X/10 commandes' format. Progress tracks customer order count toward 10-order threshold for 15% discount unlock. Visual progress bar shows current status. System integrates with customer phone lookup API."
+
+  - task: "Promo Code Validation"
+    implemented: true
+    working: true
+    file: "app/index.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "Promo code validation system successfully implemented and tested. 'Code Promo' section appears in checkout with input field and 'Appliquer' button. Successfully tested with BIENVENUE10 code - system validates code via backend API and applies 10% discount. Applied promo shows green success indicator with code name and discount percentage. Users can remove applied codes. Input converts to uppercase automatically."
+
+  - task: "Order Summary with Discounts"
+    implemented: true
+    working: true
+    file: "app/index.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "Order summary with discounts successfully implemented and tested. 'Récapitulatif' section shows complete breakdown: item names and prices, sous-total, applied discounts (displayed in green with negative amounts), livraison fee (shows GRATUITE for premium members), and final total. Discounts include KIZA PREMIUM free delivery, loyalty discounts, and promo code reductions. All calculations are accurate and update dynamically."
+
+  - task: "Mobile Responsive Checkout Flow"
+    implemented: true
+    working: true
+    file: "app/index.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "Complete mobile checkout flow successfully tested on 390x844 iPhone viewport. App loads correctly with KIZA title, menu navigation works via 'Voir Menu' button, items can be added to cart (avoiding out-of-stock items like Samoussa with red RUPTURE badge), cart badge updates showing item count, checkout screen accessible via yellow cart button, phone number entry triggers customer data loading. All promotional features integrate seamlessly in mobile UI with black/gold theme."
+
+  - task: "Customer Data Integration"
+    implemented: true
+    working: true
+    file: "app/index.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "Customer data integration successfully tested. Phone number entry (0612345678) triggers API call to GET /api/customer/{phone} which loads customer profile including premium status, loyalty progress, and order history. Premium members see confirmation badge instead of subscription banner. Loyalty progress updates based on total_orders count. Free delivery applies automatically for premium customers. All backend APIs integrate correctly with frontend."
 
 metadata:
   created_by: "testing_agent"
@@ -697,3 +768,5 @@ agent_communication:
       message: "COMPLETED ADMIN PASSWORD & MENU MANAGEMENT API TESTING: All 6 Admin Password and Menu Management endpoints tested successfully and working perfectly. GET /api/admin/passwords returns all admin sections with password status, POST /api/admin/passwords/verify correctly validates both default (kiza2024admin) and custom passwords with proper security behavior, PUT /api/admin/passwords/update successfully updates section passwords with hash storage, GET /api/admin/menu/categories returns 9 menu categories, GET /api/admin/menu returns menu items with proper structure, and POST /api/admin/menu creates new menu items with UUID generation. Password security working correctly - once custom password is set, default password is properly rejected. Added Admin Password & Menu Management tests to backend_test.py. Total 25/25 tests passed. Complete backend API suite (GPS, Settings, Stock, Employee, Payroll, Finance, Admin Password Management, Menu Management) fully functional for production use."
     - agent: "testing"
       message: "COMPLETED PROMOTIONS, LOYALTY & SUBSCRIPTION API TESTING: All 14 Promotional API endpoints tested successfully and working perfectly. PROMO CODES: GET /api/admin/promo-codes lists all codes, POST /api/admin/promo-codes creates KIZA10 (10% discount, €15 minimum), POST /api/promo-codes/validate validates codes correctly (€2 discount for €20 order), POST /api/promo-codes/use marks codes as used, PUT /api/admin/promo-codes/{id}/toggle toggles status, DELETE /api/admin/promo-codes/{id} removes codes. PRODUCT PROMOTIONS: GET /api/admin/promotions lists promotions, POST /api/admin/promotions creates 'Promo Grillades' (15% category discount), GET /api/promotions/active returns active promotions only. CUSTOMER & LOYALTY: GET /api/customer/{phone} gets/creates customers, POST /api/customer/subscribe activates KIZA PREMIUM (€9.99, free delivery), POST /api/customer/increment-orders tracks loyalty progress, GET /api/subscription/info returns pricing/benefits, GET /api/calculate-discounts combines all discounts (Premium + Promo: €5 total discount, €45 final from €50). Complete promotional system fully functional for production use. Total backend API tests: 39/39 passed."
+    - agent: "testing"
+      message: "COMPLETED FRONTEND PROMOTIONS, LOYALTY & SUBSCRIPTION TESTING: Successfully tested all promotional features on KIZA Restaurant app checkout screen using mobile viewport (390x844). ✅ KIZA PREMIUM banner displays correctly with purple gradient, crown icon, and '9.99€/mois' pricing - opens subscription modal with benefits. ✅ Loyalty progress system shows 'Programme Fidélité' with X/10 commandes format and progress bar after phone entry (0612345678). ✅ Promo code section validates BIENVENUE10 successfully, applies -10% discount with green success indicator. ✅ Order summary 'Récapitulatif' shows complete breakdown: items, sous-total, discounts (green negative amounts), livraison fee, final total. ✅ Mobile UI fully responsive with black/gold theme, cart navigation working, item addition successful (avoiding out-of-stock Samoussa). ✅ Customer data integration loads profile via phone API call. All promotional features implemented and working correctly on frontend. Total frontend promotional features: 6/6 working."
