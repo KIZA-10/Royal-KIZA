@@ -2117,6 +2117,435 @@ def test_calculate_discounts():
         print(f"❌ GET /api/calculate-discounts - ERROR: {e}")
         return False, None
 
+# ============ CUSTOMER MANAGEMENT API TESTS ============
+
+def test_get_all_customers():
+    """Test GET /api/admin/customers - Get all customers with subscription and loyalty status"""
+    print_test_header("GET /api/admin/customers - Get All Customers")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/admin/customers", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, list):
+                print(f"Found {len(response_data)} customers")
+                
+                if len(response_data) > 0:
+                    # Validate structure of first customer
+                    first_customer = response_data[0]
+                    print(f"\nValidating first customer: {first_customer.get('phone', 'Unknown')}")
+                    
+                    required_fields = ['id', 'phone', 'total_orders', 'is_premium', 'loyalty_discount_unlocked', 'created_at']
+                    success = True
+                    
+                    for field in required_fields:
+                        if field in first_customer:
+                            print(f"  ✓ {field}: {first_customer[field]} ({type(first_customer[field])})")
+                        else:
+                            print(f"  ✗ Missing field: {field}")
+                            success = False
+                    
+                    # Check if premium status is calculated correctly
+                    if 'is_premium_active' in first_customer:
+                        print(f"  ✓ is_premium_active: {first_customer['is_premium_active']} ({type(first_customer['is_premium_active'])})")
+                    
+                    if success:
+                        print("✅ GET /api/admin/customers - SUCCESS")
+                        return True, response_data
+                    else:
+                        print("❌ GET /api/admin/customers - FAILED: Invalid customer structure")
+                        return False, response_data
+                else:
+                    print("⚠️  No customers found, but API is working")
+                    print("✅ GET /api/admin/customers - SUCCESS (empty list)")
+                    return True, response_data
+            else:
+                print("❌ GET /api/admin/customers - FAILED: Response is not a list")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/admin/customers - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/admin/customers - ERROR: {e}")
+        return False, None
+
+def test_get_customer_stats():
+    """Test GET /api/admin/customers/stats - Get customer statistics"""
+    print_test_header("GET /api/admin/customers/stats - Get Customer Statistics")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/admin/customers/stats", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                expected_fields = [
+                    'total_customers', 
+                    'premium_subscribers', 
+                    'loyal_customers',
+                    'loyalty_threshold',
+                    'loyalty_discount', 
+                    'premium_price'
+                ]
+                success = True
+                
+                for field in expected_fields:
+                    if field in response_data:
+                        value = response_data[field]
+                        print(f"✓ {field}: {value} ({type(value)})")
+                        
+                        # Validate that counts are integers
+                        if field in ['total_customers', 'premium_subscribers', 'loyal_customers', 'loyalty_threshold'] and not isinstance(value, int):
+                            print(f"✗ {field} should be an integer")
+                            success = False
+                        # Validate that rates/prices are numbers
+                        elif field in ['loyalty_discount', 'premium_price'] and not isinstance(value, (int, float)):
+                            print(f"✗ {field} should be a number")
+                            success = False
+                    else:
+                        print(f"✗ Missing field: {field}")
+                        success = False
+                
+                if success:
+                    print("✅ GET /api/admin/customers/stats - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ GET /api/admin/customers/stats - FAILED: Invalid structure or values")
+                    return False, response_data
+            else:
+                print("❌ GET /api/admin/customers/stats - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/admin/customers/stats - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/admin/customers/stats - ERROR: {e}")
+        return False, None
+
+def test_get_premium_customers():
+    """Test GET /api/admin/customers/premium - Get only premium customers"""
+    print_test_header("GET /api/admin/customers/premium - Get Premium Customers")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/admin/customers/premium", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, list):
+                print(f"Found {len(response_data)} premium customers")
+                
+                # Validate that all returned customers are premium
+                success = True
+                for i, customer in enumerate(response_data):
+                    if not customer.get('is_premium'):
+                        print(f"✗ Customer {i+1} is not premium but was returned in premium list")
+                        success = False
+                    else:
+                        print(f"  ✓ Customer {i+1}: {customer.get('phone')} is premium (active: {customer.get('is_premium_active', 'unknown')})")
+                
+                if success:
+                    print("✅ GET /api/admin/customers/premium - SUCCESS")
+                    return True, response_data
+                else:
+                    print("❌ GET /api/admin/customers/premium - FAILED: Non-premium customers in result")
+                    return False, response_data
+            else:
+                print("❌ GET /api/admin/customers/premium - FAILED: Response is not a list")
+                return False, response_data
+        else:
+            print(f"❌ GET /api/admin/customers/premium - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ GET /api/admin/customers/premium - ERROR: {e}")
+        return False, None
+
+def test_create_test_customer():
+    """Create a test customer using GET /api/customer/{phone} endpoint"""
+    print_test_header("GET /api/customer/0600000001?phone=0600000001 - Create Test Customer")
+    
+    test_phone = "0600000001"
+    
+    try:
+        response = requests.get(
+            f"{API_BASE_URL}/customer/{test_phone}?phone={test_phone}", 
+            timeout=10
+        )
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict) and response_data.get('phone') == test_phone:
+                print(f"✅ Test customer created/retrieved successfully: {response_data.get('phone')}")
+                return True, response_data
+            else:
+                print("❌ Create test customer - FAILED: Invalid response structure")
+                return False, response_data
+        else:
+            print(f"❌ Create test customer - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ Create test customer - ERROR: {e}")
+        return False, None
+
+def test_toggle_customer_premium(phone: str, activate: bool):
+    """Test PUT /api/admin/customers/{phone}/premium?activate={activate} - Toggle customer premium status"""
+    action = "activate" if activate else "deactivate"
+    print_test_header(f"PUT /api/admin/customers/{phone}/premium?activate={activate} - {action.title()} Premium")
+    
+    try:
+        response = requests.put(
+            f"{API_BASE_URL}/admin/customers/{phone}/premium?activate={activate}",
+            timeout=10
+        )
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict) and 'message' in response_data:
+                print(f"✓ Message: {response_data['message']}")
+                
+                if activate and 'expires_at' in response_data:
+                    print(f"✓ Expires at: {response_data['expires_at']}")
+                
+                print(f"✅ PUT /api/admin/customers/{phone}/premium?activate={activate} - SUCCESS")
+                return True, response_data
+            else:
+                print(f"❌ Toggle premium {action} - FAILED: Invalid response structure")
+                return False, response_data
+        else:
+            print(f"❌ Toggle premium {action} - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ Toggle premium {action} - ERROR: {e}")
+        return False, None
+
+def test_verify_customer_premium_status(phone: str, expected_premium: bool):
+    """Verify customer premium status by checking customer data"""
+    print_test_header(f"Verify Customer Premium Status - Expected: {expected_premium}")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/customer/{phone}", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                actual_premium = response_data.get('is_premium', False)
+                print(f"Customer premium status: {actual_premium}")
+                
+                if actual_premium == expected_premium:
+                    print(f"✅ Premium status verification - SUCCESS: Status is {actual_premium} as expected")
+                    return True, response_data
+                else:
+                    print(f"❌ Premium status verification - FAILED: Expected {expected_premium}, got {actual_premium}")
+                    return False, response_data
+            else:
+                print("❌ Premium status verification - FAILED: Invalid response structure")
+                return False, response_data
+        else:
+            print(f"❌ Premium status verification - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ Premium status verification - ERROR: {e}")
+        return False, None
+
+def test_update_customer_loyalty(phone: str, order_count: int):
+    """Test PUT /api/admin/customers/{phone}/loyalty?order_count={order_count} - Update customer loyalty"""
+    print_test_header(f"PUT /api/admin/customers/{phone}/loyalty?order_count={order_count} - Update Loyalty")
+    
+    try:
+        response = requests.put(
+            f"{API_BASE_URL}/admin/customers/{phone}/loyalty?order_count={order_count}",
+            timeout=10
+        )
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                expected_fields = ['message', 'total_orders', 'loyalty_unlocked']
+                success = True
+                
+                for field in expected_fields:
+                    if field in response_data:
+                        value = response_data[field]
+                        print(f"✓ {field}: {value}")
+                        
+                        if field == 'total_orders' and value != order_count:
+                            print(f"✗ total_orders mismatch: expected {order_count}, got {value}")
+                            success = False
+                        elif field == 'loyalty_unlocked':
+                            expected_loyalty = order_count >= 10  # Default loyalty threshold
+                            if value != expected_loyalty:
+                                print(f"✗ loyalty_unlocked mismatch: expected {expected_loyalty}, got {value}")
+                                success = False
+                    else:
+                        print(f"✗ Missing field: {field}")
+                        success = False
+                
+                if success:
+                    print(f"✅ PUT /api/admin/customers/{phone}/loyalty - SUCCESS")
+                    return True, response_data
+                else:
+                    print(f"❌ PUT /api/admin/customers/{phone}/loyalty - FAILED: Invalid response")
+                    return False, response_data
+            else:
+                print(f"❌ Update customer loyalty - FAILED: Response is not a dictionary")
+                return False, response_data
+        else:
+            print(f"❌ Update customer loyalty - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ Update customer loyalty - ERROR: {e}")
+        return False, None
+
+def test_verify_customer_loyalty_status(phone: str, expected_orders: int, expected_loyalty: bool):
+    """Verify customer loyalty status by checking customer data"""
+    print_test_header(f"Verify Customer Loyalty Status - Expected: {expected_orders} orders, loyalty={expected_loyalty}")
+    
+    try:
+        response = requests.get(f"{API_BASE_URL}/customer/{phone}", timeout=10)
+        response_data = print_response(response)
+        
+        if response.status_code == 200:
+            if isinstance(response_data, dict):
+                actual_orders = response_data.get('total_orders', 0)
+                actual_loyalty = response_data.get('loyalty_discount_unlocked', False)
+                
+                print(f"Customer total_orders: {actual_orders}")
+                print(f"Customer loyalty_discount_unlocked: {actual_loyalty}")
+                
+                success = True
+                if actual_orders != expected_orders:
+                    print(f"✗ Order count mismatch: expected {expected_orders}, got {actual_orders}")
+                    success = False
+                
+                if actual_loyalty != expected_loyalty:
+                    print(f"✗ Loyalty status mismatch: expected {expected_loyalty}, got {actual_loyalty}")
+                    success = False
+                
+                if success:
+                    print(f"✅ Loyalty status verification - SUCCESS")
+                    return True, response_data
+                else:
+                    print(f"❌ Loyalty status verification - FAILED")
+                    return False, response_data
+            else:
+                print("❌ Loyalty status verification - FAILED: Invalid response structure")
+                return False, response_data
+        else:
+            print(f"❌ Loyalty status verification - FAILED: Status {response.status_code}")
+            return False, None
+            
+    except Exception as e:
+        print(f"❌ Loyalty status verification - ERROR: {e}")
+        return False, None
+
+def run_customer_management_tests():
+    """Run all Customer Management API tests"""
+    print("\n👤 CUSTOMER MANAGEMENT API TESTS")
+    print("=" * 50)
+    
+    customer_results = {}
+    test_phone = "0600000001"
+    
+    # Test 1: Get all customers
+    success, data = test_get_all_customers()
+    customer_results['get_all_customers'] = success
+    
+    # Test 2: Get customer stats
+    success, data = test_get_customer_stats()
+    customer_results['get_customer_stats'] = success
+    
+    # Test 3: Get premium customers
+    success, data = test_get_premium_customers()
+    customer_results['get_premium_customers'] = success
+    
+    # Test 4: Create test customer
+    success, customer_data = test_create_test_customer()
+    customer_results['create_test_customer'] = success
+    
+    if success:
+        # Test 5: Activate premium for test customer
+        success, data = test_toggle_customer_premium(test_phone, True)
+        customer_results['activate_premium'] = success
+        
+        if success:
+            # Test 6: Verify customer now has premium status
+            success, data = test_verify_customer_premium_status(test_phone, True)
+            customer_results['verify_premium_active'] = success
+            
+        # Test 7: Deactivate premium for test customer
+        success, data = test_toggle_customer_premium(test_phone, False)
+        customer_results['deactivate_premium'] = success
+        
+        if success:
+            # Test 8: Verify customer premium is deactivated
+            success, data = test_verify_customer_premium_status(test_phone, False)
+            customer_results['verify_premium_inactive'] = success
+        
+        # Test 9: Update customer loyalty to 12 orders (should unlock loyalty)
+        success, data = test_update_customer_loyalty(test_phone, 12)
+        customer_results['update_loyalty_high'] = success
+        
+        if success:
+            # Test 10: Verify loyalty is unlocked (12 >= 10)
+            success, data = test_verify_customer_loyalty_status(test_phone, 12, True)
+            customer_results['verify_loyalty_unlocked'] = success
+        
+        # Test 11: Update customer loyalty to 5 orders (should lock loyalty)
+        success, data = test_update_customer_loyalty(test_phone, 5)
+        customer_results['update_loyalty_low'] = success
+        
+        if success:
+            # Test 12: Verify loyalty is locked (5 < 10)
+            success, data = test_verify_customer_loyalty_status(test_phone, 5, False)
+            customer_results['verify_loyalty_locked'] = success
+    else:
+        print("⚠️  Skipping premium and loyalty tests - test customer creation failed")
+        skip_tests = ['activate_premium', 'verify_premium_active', 'deactivate_premium', 
+                     'verify_premium_inactive', 'update_loyalty_high', 'verify_loyalty_unlocked',
+                     'update_loyalty_low', 'verify_loyalty_locked']
+        for test in skip_tests:
+            customer_results[test] = True  # Skip but don't fail
+    
+    # Summary
+    print(f"\n{'='*50}")
+    print("CUSTOMER MANAGEMENT TEST RESULTS")
+    print(f"{'='*50}")
+    
+    total_customer_tests = len(customer_results)
+    passed_customer_tests = sum(1 for result in customer_results.values() if result)
+    
+    print("\n📊 CUSTOMER DATA TESTS:")
+    data_tests = ['get_all_customers', 'get_customer_stats', 'get_premium_customers', 'create_test_customer']
+    for test_name in data_tests:
+        if test_name in customer_results:
+            status = "✅ PASS" if customer_results[test_name] else "❌ FAIL"
+            print(f"  {test_name.upper().replace('_', ' ')}: {status}")
+    
+    print("\n💎 PREMIUM MANAGEMENT TESTS:")
+    premium_tests = ['activate_premium', 'verify_premium_active', 'deactivate_premium', 'verify_premium_inactive']
+    for test_name in premium_tests:
+        if test_name in customer_results:
+            status = "✅ PASS" if customer_results[test_name] else "❌ FAIL"
+            print(f"  {test_name.upper().replace('_', ' ')}: {status}")
+    
+    print("\n🏆 LOYALTY MANAGEMENT TESTS:")
+    loyalty_tests = ['update_loyalty_high', 'verify_loyalty_unlocked', 'update_loyalty_low', 'verify_loyalty_locked']
+    for test_name in loyalty_tests:
+        if test_name in customer_results:
+            status = "✅ PASS" if customer_results[test_name] else "❌ FAIL"
+            print(f"  {test_name.upper().replace('_', ' ')}: {status}")
+    
+    print(f"\nCustomer Management Tests Passed: {passed_customer_tests}/{total_customer_tests}")
+    
+    return customer_results
+
 def run_promotions_loyalty_tests():
     """Run all Promotions, Loyalty & Subscription API tests"""
     print("\n🎟️  PROMOTIONS, LOYALTY & SUBSCRIPTION API TESTS")
@@ -2228,6 +2657,12 @@ if __name__ == "__main__":
     print("🍽️  KIZA Restaurant - Running Existing Backend API Tests")
     success = run_all_tests()
     
+    # Run customer management tests
+    print("\n\n" + "="*80)
+    print("👤 KIZA Restaurant - Running Customer Management API Tests")
+    print("="*80)
+    customer_results = run_customer_management_tests()
+    
     # Run new promotional tests
     print("\n\n" + "="*80)
     print("🎟️  KIZA Restaurant - Running Promotional & Subscription API Tests")
@@ -2235,13 +2670,15 @@ if __name__ == "__main__":
     promo_results = run_promotions_loyalty_tests()
     
     # Overall results
+    customer_success = all(customer_results.values())
     promo_success = all(promo_results.values())
-    overall_success = success and promo_success
+    overall_success = success and customer_success and promo_success
     
     print(f"\n{'='*80}")
     print("🎉 OVERALL TEST RESULTS SUMMARY")
     print(f"{'='*80}")
     print(f"Existing Backend Tests: {'✅ PASS' if success else '❌ FAIL'}")
+    print(f"Customer Management Tests: {'✅ PASS' if customer_success else '❌ FAIL'}")
     print(f"Promotional API Tests: {'✅ PASS' if promo_success else '❌ FAIL'}")
     print(f"Overall Result: {'✅ ALL TESTS PASSED' if overall_success else '❌ SOME TESTS FAILED'}")
     

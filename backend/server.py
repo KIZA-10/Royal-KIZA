@@ -1707,6 +1707,111 @@ async def get_subscription_info():
         }
     }
 
+# ============ ADMIN CUSTOMERS ROUTES ============
+
+@api_router.get("/admin/customers")
+async def get_all_customers():
+    """Get all customers with their subscription and loyalty status"""
+    customers = await db.customers.find({}).to_list(500)
+    result = []
+    for customer in customers:
+        customer.pop('_id', None)
+        # Check if premium is still active
+        is_premium_active = False
+        if customer.get('is_premium') and customer.get('premium_expires_at'):
+            try:
+                expires = datetime.fromisoformat(customer['premium_expires_at'].replace('Z', '+00:00'))
+                is_premium_active = expires > datetime.now(expires.tzinfo) if expires.tzinfo else expires > datetime.now()
+            except:
+                is_premium_active = False
+        customer['is_premium_active'] = is_premium_active
+        result.append(customer)
+    return result
+
+@api_router.get("/admin/customers/premium")
+async def get_premium_customers():
+    """Get only premium customers"""
+    customers = await db.customers.find({"is_premium": True}).to_list(500)
+    result = []
+    now = datetime.now()
+    for customer in customers:
+        customer.pop('_id', None)
+        # Check if premium is still active
+        is_active = False
+        if customer.get('premium_expires_at'):
+            try:
+                expires = datetime.fromisoformat(customer['premium_expires_at'].replace('Z', '+00:00'))
+                is_active = expires > datetime.now(expires.tzinfo) if expires.tzinfo else expires > now
+            except:
+                is_active = False
+        customer['is_premium_active'] = is_active
+        result.append(customer)
+    return result
+
+@api_router.put("/admin/customers/{phone}/premium")
+async def toggle_customer_premium(phone: str, activate: bool = True):
+    """Manually activate/deactivate premium for a customer"""
+    customer = await db.customers.find_one({"phone": phone})
+    if not customer:
+        raise HTTPException(status_code=404, detail="Client non trouvé")
+    
+    if activate:
+        expires_at = (datetime.now() + timedelta(days=30)).isoformat()
+        await db.customers.update_one(
+            {"phone": phone},
+            {"$set": {
+                "is_premium": True,
+                "premium_expires_at": expires_at
+            }}
+        )
+        return {"message": "Abonnement Premium activé", "expires_at": expires_at}
+    else:
+        await db.customers.update_one(
+            {"phone": phone},
+            {"$set": {
+                "is_premium": False,
+                "premium_expires_at": None
+            }}
+        )
+        return {"message": "Abonnement Premium désactivé"}
+
+@api_router.put("/admin/customers/{phone}/loyalty")
+async def update_customer_loyalty(phone: str, order_count: int):
+    """Manually update customer order count for loyalty"""
+    customer = await db.customers.find_one({"phone": phone})
+    if not customer:
+        raise HTTPException(status_code=404, detail="Client non trouvé")
+    
+    loyalty_unlocked = order_count >= LOYALTY_THRESHOLD
+    await db.customers.update_one(
+        {"phone": phone},
+        {"$set": {
+            "total_orders": order_count,
+            "loyalty_discount_unlocked": loyalty_unlocked
+        }}
+    )
+    return {
+        "message": "Fidélité mise à jour",
+        "total_orders": order_count,
+        "loyalty_unlocked": loyalty_unlocked
+    }
+
+@api_router.get("/admin/customers/stats")
+async def get_customers_stats():
+    """Get customer statistics"""
+    total = await db.customers.count_documents({})
+    premium = await db.customers.count_documents({"is_premium": True})
+    loyal = await db.customers.count_documents({"loyalty_discount_unlocked": True})
+    
+    return {
+        "total_customers": total,
+        "premium_subscribers": premium,
+        "loyal_customers": loyal,
+        "loyalty_threshold": LOYALTY_THRESHOLD,
+        "loyalty_discount": LOYALTY_DISCOUNT,
+        "premium_price": PREMIUM_PRICE
+    }
+
 # ============ PROMO CODES ROUTES ============
 
 @api_router.get("/admin/promo-codes")

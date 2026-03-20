@@ -687,10 +687,10 @@ export default function KizaRestaurant() {
       
       <TouchableOpacity 
         style={styles.navItem}
-        onPress={() => setCurrentScreen('contact')}
+        onPress={() => router.push('/profile')}
       >
-        <MaterialIcons name="contact-phone" size={22} color={currentScreen === 'contact' ? COLORS.gold : COLORS.gray} />
-        <Text style={[styles.navText, currentScreen === 'contact' && styles.navTextActive]}>Contact</Text>
+        <MaterialCommunityIcons name="account-circle" size={22} color={COLORS.gray} />
+        <Text style={styles.navText}>Profil</Text>
       </TouchableOpacity>
     </View>
   );

@@ -747,6 +747,66 @@ test_plan:
           agent: "testing"
           comment: "API endpoint GET /api/calculate-discounts tested successfully. For phone 0612345678, subtotal €50, promo KIZA10: calculated 2 discounts (KIZA PREMIUM free delivery €3.00, promo code 10% €5.00), total_discount €5.00, free_delivery=true, final_total €45.00. Complete discount calculation system working perfectly."
 
+  - task: "Admin Customer Management API - Get All Customers"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint GET /api/admin/customers tested successfully. Returns list of all customers with subscription and loyalty status. Found 1 customer with proper structure including id, phone, total_orders, is_premium, loyalty_discount_unlocked, created_at, and is_premium_active (calculated field). Customer management data retrieval working correctly."
+
+  - task: "Admin Customer Management API - Get Customer Stats"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint GET /api/admin/customers/stats tested successfully. Returns comprehensive customer statistics: total_customers (1), premium_subscribers (1), loyal_customers (0), loyalty_threshold (10), loyalty_discount (15%), premium_price (€9.99). All required fields present with correct data types. Customer statistics calculation working perfectly."
+
+  - task: "Admin Customer Management API - Get Premium Customers"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint GET /api/admin/customers/premium tested successfully. Returns only premium customers with is_premium=true. Found 1 premium customer with correct filtering and is_premium_active status calculation. Premium customer filtering working correctly."
+
+  - task: "Admin Customer Management API - Toggle Customer Premium"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint PUT /api/admin/customers/{phone}/premium tested successfully for both activation and deactivation. Created test customer 0600000001, activated premium (30-day expiration), verified premium status true, then deactivated premium and verified status false. Premium toggle functionality working correctly with proper expiration date handling."
+
+  - task: "Admin Customer Management API - Update Customer Loyalty"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "API endpoint PUT /api/admin/customers/{phone}/loyalty tested successfully. Updated customer order count to 12 (loyalty_unlocked=true since 12 >= 10), then to 5 (loyalty_unlocked=false since 5 < 10). Loyalty threshold calculation working correctly, proper total_orders and loyalty_discount_unlocked field updates verified through customer data retrieval."
+
 agent_communication:
     - agent: "main"
       message: "Implementing Promotions, Loyalty & Subscription feature. Backend APIs already exist. Now adding frontend integration: promo code input in checkout, discount display, KIZA PREMIUM subscription option. Need to test: GET /api/admin/promo-codes, POST /api/admin/promo-codes, POST /api/promo-codes/validate, GET /api/calculate-discounts, GET /api/customer/{phone}, POST /api/subscribe, GET /api/admin/promotions"
@@ -770,3 +830,5 @@ agent_communication:
       message: "COMPLETED PROMOTIONS, LOYALTY & SUBSCRIPTION API TESTING: All 14 Promotional API endpoints tested successfully and working perfectly. PROMO CODES: GET /api/admin/promo-codes lists all codes, POST /api/admin/promo-codes creates KIZA10 (10% discount, €15 minimum), POST /api/promo-codes/validate validates codes correctly (€2 discount for €20 order), POST /api/promo-codes/use marks codes as used, PUT /api/admin/promo-codes/{id}/toggle toggles status, DELETE /api/admin/promo-codes/{id} removes codes. PRODUCT PROMOTIONS: GET /api/admin/promotions lists promotions, POST /api/admin/promotions creates 'Promo Grillades' (15% category discount), GET /api/promotions/active returns active promotions only. CUSTOMER & LOYALTY: GET /api/customer/{phone} gets/creates customers, POST /api/customer/subscribe activates KIZA PREMIUM (€9.99, free delivery), POST /api/customer/increment-orders tracks loyalty progress, GET /api/subscription/info returns pricing/benefits, GET /api/calculate-discounts combines all discounts (Premium + Promo: €5 total discount, €45 final from €50). Complete promotional system fully functional for production use. Total backend API tests: 39/39 passed."
     - agent: "testing"
       message: "COMPLETED FRONTEND PROMOTIONS, LOYALTY & SUBSCRIPTION TESTING: Successfully tested all promotional features on KIZA Restaurant app checkout screen using mobile viewport (390x844). ✅ KIZA PREMIUM banner displays correctly with purple gradient, crown icon, and '9.99€/mois' pricing - opens subscription modal with benefits. ✅ Loyalty progress system shows 'Programme Fidélité' with X/10 commandes format and progress bar after phone entry (0612345678). ✅ Promo code section validates BIENVENUE10 successfully, applies -10% discount with green success indicator. ✅ Order summary 'Récapitulatif' shows complete breakdown: items, sous-total, discounts (green negative amounts), livraison fee, final total. ✅ Mobile UI fully responsive with black/gold theme, cart navigation working, item addition successful (avoiding out-of-stock Samoussa). ✅ Customer data integration loads profile via phone API call. All promotional features implemented and working correctly on frontend. Total frontend promotional features: 6/6 working."
+    - agent: "testing"
+      message: "COMPLETED CUSTOMER MANAGEMENT API TESTING: All 5 Admin Customer Management endpoints tested successfully and working perfectly. GET /api/admin/customers returns all customers with subscription/loyalty status including is_premium_active calculation, GET /api/admin/customers/stats provides comprehensive statistics (total: 1, premium: 1, loyal: 0, threshold: 10, discount: 15%, price: €9.99), GET /api/admin/customers/premium returns only premium customers with proper filtering. PREMIUM MANAGEMENT: Created test customer 0600000001, PUT /api/admin/customers/{phone}/premium successfully activates/deactivates premium with 30-day expiration, verified status changes through customer data retrieval. LOYALTY MANAGEMENT: PUT /api/admin/customers/{phone}/loyalty correctly updates order count and loyalty_discount_unlocked status based on threshold (12 orders unlocks loyalty, 5 orders locks it). All 12 Customer Management tests passed: data retrieval, statistics, premium toggle verification, and loyalty threshold calculations working perfectly. Complete Admin Customer Management system fully functional for production use."

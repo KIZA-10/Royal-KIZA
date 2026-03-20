@@ -72,6 +72,26 @@ interface ProductPromotion {
   valid_until?: string;
 }
 
+interface Customer {
+  phone: string;
+  full_name?: string;
+  is_premium: boolean;
+  is_premium_active?: boolean;
+  premium_expires_at?: string;
+  total_orders: number;
+  loyalty_discount_unlocked: boolean;
+  created_at?: string;
+}
+
+interface CustomerStats {
+  total_customers: number;
+  premium_subscribers: number;
+  loyal_customers: number;
+  loyalty_threshold: number;
+  loyalty_discount: number;
+  premium_price: number;
+}
+
 interface Category {
   id: string;
   name: string;
@@ -80,7 +100,7 @@ interface Category {
 export default function PromotionsManagementScreen() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
-  const [activeTab, setActiveTab] = useState<'codes' | 'promotions'>('codes');
+  const [activeTab, setActiveTab] = useState<'codes' | 'promotions' | 'clients'>('codes');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
@@ -108,6 +128,14 @@ export default function PromotionsManagementScreen() {
     valid_until: '',
   });
 
+  // Customers state
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customerStats, setCustomerStats] = useState<CustomerStats | null>(null);
+  const [customerFilter, setCustomerFilter] = useState<'all' | 'premium' | 'loyal'>('all');
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
+  const [editOrderCount, setEditOrderCount] = useState('');
+
   const handleLogin = () => {
     if (adminPassword === ADMIN_PASSWORD) {
       setIsAuthenticated(true);
@@ -120,14 +148,18 @@ export default function PromotionsManagementScreen() {
   const fetchAllData = useCallback(async () => {
     try {
       setLoading(true);
-      const [codesRes, promosRes, catsRes] = await Promise.all([
+      const [codesRes, promosRes, catsRes, customersRes, statsRes] = await Promise.all([
         api.get('/api/admin/promo-codes'),
         api.get('/api/admin/promotions'),
         api.get('/api/admin/menu/categories'),
+        api.get('/api/admin/customers'),
+        api.get('/api/admin/customers/stats'),
       ]);
       setPromoCodes(codesRes.data);
       setPromotions(promosRes.data);
       setCategories(catsRes.data);
+      setCustomers(customersRes.data);
+      setCustomerStats(statsRes.data);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -264,6 +296,63 @@ export default function PromotionsManagementScreen() {
     ]);
   };
 
+  // Customer management functions
+  const handleTogglePremium = async (customer: Customer) => {
+    try {
+      const activate = !customer.is_premium_active;
+      await api.put(`/api/admin/customers/${customer.phone}/premium?activate=${activate}`);
+      Alert.alert('Succès', activate ? 'Premium activé pour 30 jours' : 'Premium désactivé');
+      fetchAllData();
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de modifier');
+    }
+  };
+
+  const handleUpdateLoyalty = async () => {
+    if (!selectedCustomer) return;
+    const count = parseInt(editOrderCount);
+    if (isNaN(count) || count < 0) {
+      Alert.alert('Erreur', 'Nombre de commandes invalide');
+      return;
+    }
+    
+    try {
+      await api.put(`/api/admin/customers/${selectedCustomer.phone}/loyalty?order_count=${count}`);
+      Alert.alert('Succès', 'Fidélité mise à jour');
+      setShowCustomerModal(false);
+      setSelectedCustomer(null);
+      fetchAllData();
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de modifier');
+    }
+  };
+
+  const openCustomerModal = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setEditOrderCount(customer.total_orders.toString());
+    setShowCustomerModal(true);
+  };
+
+  const getFilteredCustomers = () => {
+    switch (customerFilter) {
+      case 'premium':
+        return customers.filter(c => c.is_premium_active);
+      case 'loyal':
+        return customers.filter(c => c.loyalty_discount_unlocked);
+      default:
+        return customers;
+    }
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('fr-FR');
+    } catch {
+      return 'N/A';
+    }
+  };
+
   const getAppliestoLabel = (appliesTo: string, categoryId?: string) => {
     if (appliesTo === 'all') return 'Tout le menu';
     if (appliesTo === 'category') {
@@ -335,15 +424,22 @@ export default function PromotionsManagementScreen() {
             style={[styles.tabButton, activeTab === 'codes' && styles.tabButtonActive]}
             onPress={() => setActiveTab('codes')}
           >
-            <MaterialCommunityIcons name="ticket-percent" size={18} color={activeTab === 'codes' ? COLORS.black : COLORS.gold} />
-            <Text style={[styles.tabText, activeTab === 'codes' && styles.tabTextActive]}>Codes Promo</Text>
+            <MaterialCommunityIcons name="ticket-percent" size={16} color={activeTab === 'codes' ? COLORS.black : COLORS.gold} />
+            <Text style={[styles.tabText, activeTab === 'codes' && styles.tabTextActive]}>Codes</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === 'promotions' && styles.tabButtonActive]}
             onPress={() => setActiveTab('promotions')}
           >
-            <MaterialCommunityIcons name="sale" size={18} color={activeTab === 'promotions' ? COLORS.black : COLORS.gold} />
-            <Text style={[styles.tabText, activeTab === 'promotions' && styles.tabTextActive]}>Promos Produits</Text>
+            <MaterialCommunityIcons name="sale" size={16} color={activeTab === 'promotions' ? COLORS.black : COLORS.gold} />
+            <Text style={[styles.tabText, activeTab === 'promotions' && styles.tabTextActive]}>Promos</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 'clients' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('clients')}
+          >
+            <MaterialCommunityIcons name="account-group" size={16} color={activeTab === 'clients' ? COLORS.black : COLORS.gold} />
+            <Text style={[styles.tabText, activeTab === 'clients' && styles.tabTextActive]}>Clients</Text>
           </TouchableOpacity>
         </View>
 
@@ -476,6 +572,125 @@ export default function PromotionsManagementScreen() {
                         </View>
                       </View>
                     </View>
+                  ))
+                )}
+              </View>
+            )}
+            
+            {/* Clients Tab */}
+            {activeTab === 'clients' && (
+              <View>
+                {/* Stats Cards */}
+                {customerStats && (
+                  <View style={styles.statsRow}>
+                    <View style={styles.statCard}>
+                      <MaterialCommunityIcons name="account-group" size={24} color={COLORS.gold} />
+                      <Text style={styles.statNumber}>{customerStats.total_customers}</Text>
+                      <Text style={styles.statLabel}>Total Clients</Text>
+                    </View>
+                    <View style={[styles.statCard, { backgroundColor: 'rgba(156,39,176,0.15)' }]}>
+                      <MaterialCommunityIcons name="crown" size={24} color={COLORS.purple} />
+                      <Text style={[styles.statNumber, { color: COLORS.purple }]}>{customerStats.premium_subscribers}</Text>
+                      <Text style={styles.statLabel}>Premium</Text>
+                    </View>
+                    <View style={[styles.statCard, { backgroundColor: 'rgba(76,175,80,0.15)' }]}>
+                      <MaterialCommunityIcons name="star-circle" size={24} color={COLORS.success} />
+                      <Text style={[styles.statNumber, { color: COLORS.success }]}>{customerStats.loyal_customers}</Text>
+                      <Text style={styles.statLabel}>Fidèles</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Filter Buttons */}
+                <View style={styles.filterRow}>
+                  <TouchableOpacity
+                    style={[styles.filterBtn, customerFilter === 'all' && styles.filterBtnActive]}
+                    onPress={() => setCustomerFilter('all')}
+                  >
+                    <Text style={[styles.filterText, customerFilter === 'all' && styles.filterTextActive]}>Tous</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.filterBtn, customerFilter === 'premium' && styles.filterBtnActive]}
+                    onPress={() => setCustomerFilter('premium')}
+                  >
+                    <MaterialCommunityIcons name="crown" size={14} color={customerFilter === 'premium' ? COLORS.black : COLORS.purple} />
+                    <Text style={[styles.filterText, customerFilter === 'premium' && styles.filterTextActive]}>Premium</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.filterBtn, customerFilter === 'loyal' && styles.filterBtnActive]}
+                    onPress={() => setCustomerFilter('loyal')}
+                  >
+                    <MaterialCommunityIcons name="star" size={14} color={customerFilter === 'loyal' ? COLORS.black : COLORS.success} />
+                    <Text style={[styles.filterText, customerFilter === 'loyal' && styles.filterTextActive]}>Fidèles</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Customer List */}
+                {getFilteredCustomers().length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <MaterialCommunityIcons name="account-off" size={48} color={COLORS.gray} />
+                    <Text style={styles.emptyText}>Aucun client trouvé</Text>
+                  </View>
+                ) : (
+                  getFilteredCustomers().map((customer, idx) => (
+                    <TouchableOpacity
+                      key={customer.phone || idx}
+                      style={styles.customerCard}
+                      onPress={() => openCustomerModal(customer)}
+                    >
+                      <View style={styles.customerHeader}>
+                        <View style={styles.customerInfo}>
+                          <View style={styles.customerAvatar}>
+                            <MaterialCommunityIcons name="account" size={24} color={COLORS.gold} />
+                          </View>
+                          <View>
+                            <Text style={styles.customerName}>{customer.full_name || 'Client'}</Text>
+                            <Text style={styles.customerPhone}>{customer.phone}</Text>
+                          </View>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color={COLORS.gray} />
+                      </View>
+                      
+                      <View style={styles.customerBadges}>
+                        {customer.is_premium_active && (
+                          <View style={styles.premiumBadge}>
+                            <MaterialCommunityIcons name="crown" size={12} color={COLORS.purple} />
+                            <Text style={styles.premiumBadgeText}>PREMIUM</Text>
+                          </View>
+                        )}
+                        {customer.loyalty_discount_unlocked && (
+                          <View style={styles.loyalBadge}>
+                            <MaterialCommunityIcons name="star" size={12} color={COLORS.success} />
+                            <Text style={styles.loyalBadgeText}>FIDÈLE -15%</Text>
+                          </View>
+                        )}
+                      </View>
+                      
+                      <View style={styles.customerStats}>
+                        <View style={styles.customerStat}>
+                          <Ionicons name="receipt" size={14} color={COLORS.gray} />
+                          <Text style={styles.customerStatText}>{customer.total_orders} commandes</Text>
+                        </View>
+                        {customer.is_premium_active && customer.premium_expires_at && (
+                          <View style={styles.customerStat}>
+                            <Ionicons name="calendar" size={14} color={COLORS.gray} />
+                            <Text style={styles.customerStatText}>Expire: {formatDate(customer.premium_expires_at)}</Text>
+                          </View>
+                        )}
+                      </View>
+                      
+                      <View style={styles.customerActions}>
+                        <TouchableOpacity
+                          style={[styles.quickActionBtn, customer.is_premium_active ? styles.quickActionBtnDanger : styles.quickActionBtnPremium]}
+                          onPress={(e) => { e.stopPropagation(); handleTogglePremium(customer); }}
+                        >
+                          <MaterialCommunityIcons name="crown" size={14} color={COLORS.white} />
+                          <Text style={styles.quickActionText}>
+                            {customer.is_premium_active ? 'Retirer' : 'Activer'} Premium
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </TouchableOpacity>
                   ))
                 )}
               </View>
@@ -629,6 +844,78 @@ export default function PromotionsManagementScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* Customer Edit Modal */}
+        <Modal visible={showCustomerModal} transparent animationType="slide" onRequestClose={() => setShowCustomerModal(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Modifier Client</Text>
+                <TouchableOpacity onPress={() => setShowCustomerModal(false)}>
+                  <Ionicons name="close" size={24} color={COLORS.gray} />
+                </TouchableOpacity>
+              </View>
+
+              {selectedCustomer && (
+                <ScrollView style={styles.modalForm}>
+                  <View style={styles.customerModalInfo}>
+                    <View style={styles.customerModalAvatar}>
+                      <MaterialCommunityIcons name="account" size={40} color={COLORS.gold} />
+                    </View>
+                    <Text style={styles.customerModalName}>{selectedCustomer.full_name || 'Client'}</Text>
+                    <Text style={styles.customerModalPhone}>{selectedCustomer.phone}</Text>
+                  </View>
+
+                  <View style={styles.customerModalSection}>
+                    <Text style={styles.formLabel}>Abonnement Premium</Text>
+                    <View style={styles.premiumToggleRow}>
+                      <Text style={styles.premiumToggleLabel}>
+                        {selectedCustomer.is_premium_active ? 'Actif' : 'Inactif'}
+                      </Text>
+                      <Switch
+                        value={selectedCustomer.is_premium_active}
+                        onValueChange={() => handleTogglePremium(selectedCustomer)}
+                        trackColor={{ false: COLORS.error, true: COLORS.success }}
+                        thumbColor={COLORS.white}
+                      />
+                    </View>
+                    {selectedCustomer.is_premium_active && selectedCustomer.premium_expires_at && (
+                      <Text style={styles.premiumExpireText}>
+                        Expire le: {formatDate(selectedCustomer.premium_expires_at)}
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={styles.customerModalSection}>
+                    <Text style={styles.formLabel}>Programme Fidélité</Text>
+                    <Text style={styles.loyaltyInfo}>
+                      {selectedCustomer.loyalty_discount_unlocked 
+                        ? '✓ Réduction -15% débloquée !' 
+                        : `${10 - selectedCustomer.total_orders} commande(s) restantes pour -15%`}
+                    </Text>
+                    
+                    <Text style={[styles.formLabel, { marginTop: 16 }]}>Nombre de commandes</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      value={editOrderCount}
+                      onChangeText={setEditOrderCount}
+                      placeholder="Nombre de commandes"
+                      placeholderTextColor={COLORS.gray}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </ScrollView>
+              )}
+
+              <TouchableOpacity style={styles.modalSaveButton} onPress={handleUpdateLoyalty}>
+                <LinearGradient colors={[COLORS.gold, COLORS.goldDark]} style={styles.saveButtonGradient}>
+                  <Ionicons name="checkmark" size={20} color={COLORS.black} />
+                  <Text style={styles.saveButtonText}>Enregistrer</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </LinearGradient>
     </SafeAreaView>
   );
@@ -691,4 +978,43 @@ const styles = StyleSheet.create({
   modalSaveButton: { borderRadius: 12, overflow: 'hidden', marginTop: 20 },
   saveButtonGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16 },
   saveButtonText: { fontSize: 16, fontWeight: 'bold', marginLeft: 8 },
+  
+  // Customer Tab Styles
+  statsRow: { flexDirection: 'row', marginBottom: 16 },
+  statCard: { flex: 1, backgroundColor: 'rgba(212,175,55,0.1)', borderRadius: 12, padding: 12, alignItems: 'center', marginHorizontal: 4 },
+  statNumber: { fontSize: 24, fontWeight: 'bold', color: COLORS.gold, marginTop: 4 },
+  statLabel: { fontSize: 11, color: COLORS.gray, marginTop: 2 },
+  filterRow: { flexDirection: 'row', marginBottom: 16 },
+  filterBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, backgroundColor: COLORS.blackMedium, borderRadius: 8, marginHorizontal: 4, borderWidth: 1, borderColor: 'rgba(212,175,55,0.2)' },
+  filterBtnActive: { backgroundColor: COLORS.gold, borderColor: COLORS.gold },
+  filterText: { fontSize: 13, color: COLORS.gold, marginLeft: 4 },
+  filterTextActive: { color: COLORS.black, fontWeight: '600' },
+  customerCard: { backgroundColor: COLORS.blackMedium, borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(212,175,55,0.15)' },
+  customerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  customerInfo: { flexDirection: 'row', alignItems: 'center' },
+  customerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(212,175,55,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  customerName: { fontSize: 16, fontWeight: '600', color: COLORS.white },
+  customerPhone: { fontSize: 13, color: COLORS.gray, marginTop: 2 },
+  customerBadges: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 },
+  premiumBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(156,39,176,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginRight: 8, marginBottom: 4 },
+  premiumBadgeText: { fontSize: 10, fontWeight: 'bold', color: COLORS.purple, marginLeft: 4 },
+  loyalBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(76,175,80,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginRight: 8, marginBottom: 4 },
+  loyalBadgeText: { fontSize: 10, fontWeight: 'bold', color: COLORS.success, marginLeft: 4 },
+  customerStats: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 },
+  customerStat: { flexDirection: 'row', alignItems: 'center', marginRight: 16, marginBottom: 4 },
+  customerStatText: { fontSize: 12, color: COLORS.gray, marginLeft: 6 },
+  customerActions: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 10 },
+  quickActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 8 },
+  quickActionBtnPremium: { backgroundColor: COLORS.purple },
+  quickActionBtnDanger: { backgroundColor: COLORS.error },
+  quickActionText: { fontSize: 13, fontWeight: '600', color: COLORS.white, marginLeft: 6 },
+  customerModalInfo: { alignItems: 'center', marginBottom: 24 },
+  customerModalAvatar: { width: 70, height: 70, borderRadius: 35, backgroundColor: 'rgba(212,175,55,0.15)', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  customerModalName: { fontSize: 20, fontWeight: 'bold', color: COLORS.white },
+  customerModalPhone: { fontSize: 14, color: COLORS.gray, marginTop: 4 },
+  customerModalSection: { backgroundColor: COLORS.blackMedium, borderRadius: 12, padding: 14, marginBottom: 16 },
+  premiumToggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
+  premiumToggleLabel: { fontSize: 15, color: COLORS.white },
+  premiumExpireText: { fontSize: 12, color: COLORS.gray, marginTop: 8 },
+  loyaltyInfo: { fontSize: 14, color: COLORS.goldLight, marginTop: 8 },
 });
